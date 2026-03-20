@@ -300,8 +300,7 @@ Result<Policy> parse_policy_file(const std::string& path, PolicyIssues& issues)
         if (section == "deny_ip_port") {
             auto rule_result = parse_ip_port_rule(trimmed);
             if (!rule_result) {
-                issues.errors.push_back("line " + std::to_string(line_no) + ": invalid IP:port rule '" + trimmed +
-                                        "'");
+                issues.errors.push_back("line " + std::to_string(line_no) + ": invalid IP:port rule '" + trimmed + "'");
                 continue;
             }
             std::string key = canonical_ip_port_rule_key(*rule_result);

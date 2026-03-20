@@ -631,9 +631,9 @@ int daemon_run(bool audit_only, bool enable_seccomp, uint32_t deadman_ttl, uint8
 
     const std::string applied_policy_path = applied_policy_path_from_env();
     const std::string capabilities_report_path = capabilities_report_path_from_env();
-    auto gate_result =
-        evaluate_policy_gate(state, features, applied_policy_path, audit_only, lsm_enabled, allow_unknown_binary_identity,
-                             enforce_signal, enforce_gate_mode, config, g_deps.set_agent_config_full);
+    auto gate_result = evaluate_policy_gate(state, features, applied_policy_path, audit_only, lsm_enabled,
+                                            allow_unknown_binary_identity, enforce_signal, enforce_gate_mode, config,
+                                            g_deps.set_agent_config_full);
     if (!gate_result) {
         return fail(gate_result.error().to_string());
     }

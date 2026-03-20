@@ -79,9 +79,8 @@ Result<AppliedPolicyRequirements> load_applied_policy_requirements(const std::st
     req.verified_exec_required = req.protect_connect || req.protect_path_count > 0;
     req.verified_exec_runtime_deps_required = req.verified_exec_required && req.protect_runtime_deps;
     req.exec_identity_required = req.exec_allowlist_required || req.verified_exec_required;
-    req.network_rule_count =
-        parsed->network.deny_ips.size() + parsed->network.deny_cidrs.size() + parsed->network.deny_ports.size() +
-        parsed->network.deny_ip_ports.size();
+    req.network_rule_count = parsed->network.deny_ips.size() + parsed->network.deny_cidrs.size() +
+                             parsed->network.deny_ports.size() + parsed->network.deny_ip_ports.size();
 
     if (!parsed->network.deny_ips.empty() || !parsed->network.deny_cidrs.empty() ||
         !parsed->network.deny_ip_ports.empty()) {

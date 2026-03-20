@@ -1,6 +1,4 @@
 // cppcheck-suppress-file missingIncludeSystem
-#include "policy.hpp"
-
 #include <cerrno>
 #include <cstdlib>
 #include <filesystem>
@@ -12,6 +10,7 @@
 #include "bpf_ops.hpp"
 #include "logging.hpp"
 #include "network_ops.hpp"
+#include "policy.hpp"
 #include "sha256.hpp"
 #include "tracing.hpp"
 #include "utils.hpp"

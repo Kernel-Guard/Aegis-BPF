@@ -183,8 +183,9 @@ int cmd_network_deny_add_ip_port(const std::string& rule_text)
 
     auto rule_result = parse_ip_port_rule(rule_text);
     if (!rule_result) {
-        logger().log(
-            SLOG_ERROR("Failed to parse deny IP:port rule").field("rule", rule_text).field("error", rule_result.error().to_string()));
+        logger().log(SLOG_ERROR("Failed to parse deny IP:port rule")
+                         .field("rule", rule_text)
+                         .field("error", rule_result.error().to_string()));
         return fail_span(span, rule_result.error().to_string());
     }
 
@@ -345,8 +346,9 @@ int cmd_network_deny_del_ip_port(const std::string& rule_text)
 
     auto rule_result = parse_ip_port_rule(rule_text);
     if (!rule_result) {
-        logger().log(
-            SLOG_ERROR("Failed to parse deny IP:port rule").field("rule", rule_text).field("error", rule_result.error().to_string()));
+        logger().log(SLOG_ERROR("Failed to parse deny IP:port rule")
+                         .field("rule", rule_text)
+                         .field("error", rule_result.error().to_string()));
         return fail_span(span, rule_result.error().to_string());
     }
 

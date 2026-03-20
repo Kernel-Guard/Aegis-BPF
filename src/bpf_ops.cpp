@@ -35,13 +35,8 @@ std::atomic<uint32_t> g_max_network_entries{0};
 std::set<std::string> detect_missing_optional_lsm_hooks()
 {
     static constexpr std::array<const char*, 7> kOptionalHooks = {
-        "bprm_check_security",
-        "file_mmap",
-        "socket_connect",
-        "socket_bind",
-        "socket_listen",
-        "socket_accept",
-        "socket_sendmsg",
+        "bprm_check_security", "file_mmap",     "socket_connect", "socket_bind",
+        "socket_listen",       "socket_accept", "socket_sendmsg",
     };
 
     std::set<std::string> missing;
@@ -235,7 +230,6 @@ Result<void> load_bpf(bool reuse_pins, bool attach_links, BpfState& state)
             return fail(error);
         }
         kernel_features = features_result.value();
-
     }
 
     {

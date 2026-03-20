@@ -30,8 +30,7 @@ Result<void> attach_prog(bpf_program* prog, BpfState& state)
 }
 
 Result<void> attach_required_program(BpfState& state, const std::string& trace_id, const std::string& parent_span_id,
-                                     const char* span_name, const char* prog_name,
-                                     const std::string& missing_message)
+                                     const char* span_name, const char* prog_name, const std::string& missing_message)
 {
     ScopedSpan span(span_name, trace_id, parent_span_id);
     bpf_program* prog = bpf_object__find_program_by_name(state.obj, prog_name);
@@ -189,19 +188,24 @@ Result<void> attach_all(BpfState& state, bool lsm_enabled, bool use_inode_permis
         (void)span;
 
         bpf_program* prog = bpf_object__find_program_by_name(state.obj, "handle_socket_connect");
-        attach_optional_program(state, prog, state.socket_connect_hook_attached, "Optional socket_connect hook attach failed");
+        attach_optional_program(state, prog, state.socket_connect_hook_attached,
+                                "Optional socket_connect hook attach failed");
 
         prog = bpf_object__find_program_by_name(state.obj, "handle_socket_bind");
-        attach_optional_program(state, prog, state.socket_bind_hook_attached, "Optional socket_bind hook attach failed");
+        attach_optional_program(state, prog, state.socket_bind_hook_attached,
+                                "Optional socket_bind hook attach failed");
 
         prog = bpf_object__find_program_by_name(state.obj, "handle_socket_listen");
-        attach_optional_program(state, prog, state.socket_listen_hook_attached, "Optional socket_listen hook attach failed");
+        attach_optional_program(state, prog, state.socket_listen_hook_attached,
+                                "Optional socket_listen hook attach failed");
 
         prog = bpf_object__find_program_by_name(state.obj, "handle_socket_accept");
-        attach_optional_program(state, prog, state.socket_accept_hook_attached, "Optional socket_accept hook attach failed");
+        attach_optional_program(state, prog, state.socket_accept_hook_attached,
+                                "Optional socket_accept hook attach failed");
 
         prog = bpf_object__find_program_by_name(state.obj, "handle_socket_sendmsg");
-        attach_optional_program(state, prog, state.socket_sendmsg_hook_attached, "Optional socket_sendmsg hook attach failed");
+        attach_optional_program(state, prog, state.socket_sendmsg_hook_attached,
+                                "Optional socket_sendmsg hook attach failed");
     }
 
     state.attach_contract_valid = true;

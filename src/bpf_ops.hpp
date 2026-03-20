@@ -8,8 +8,8 @@
 #include <utility>
 #include <vector>
 
-#include "bpf_config.hpp"
 #include "bpf_attach.hpp"
+#include "bpf_config.hpp"
 #include "bpf_integrity.hpp"
 #include "bpf_maps.hpp"
 #include "result.hpp"

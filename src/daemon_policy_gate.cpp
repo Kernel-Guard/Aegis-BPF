@@ -28,8 +28,8 @@ Result<void> switch_to_audit_only(BpfState& state, AgentConfig& config, SetAgent
     config.audit_only = 1;
     auto update_result = set_agent_config_full(state, config);
     if (!update_result) {
-        logger().log(SLOG_ERROR("Failed to switch to audit-only mode")
-                         .field("error", update_result.error().to_string()));
+        logger().log(
+            SLOG_ERROR("Failed to switch to audit-only mode").field("error", update_result.error().to_string()));
         return update_result.error();
     }
     return {};
@@ -105,7 +105,8 @@ Result<PolicyGateOutcome> evaluate_policy_gate(BpfState& state, const KernelFeat
                 const std::string detail =
                     "connect_required=" +
                     std::string(outcome.policy_requirements.network_connect_required ? "true" : "false") +
-                    ",bind_required=" + std::string(outcome.policy_requirements.network_bind_required ? "true" : "false") +
+                    ",bind_required=" +
+                    std::string(outcome.policy_requirements.network_bind_required ? "true" : "false") +
                     ",connect_hook_attached=" + std::string(state.socket_connect_hook_attached ? "true" : "false") +
                     ",bind_hook_attached=" + std::string(state.socket_bind_hook_attached ? "true" : "false");
 
@@ -191,17 +192,16 @@ Result<PolicyGateOutcome> evaluate_policy_gate(BpfState& state, const KernelFeat
             return exec_mode_result.error();
         }
 
-        const bool kernel_hook_ready =
-            lsm_enabled && state.exec_identity_hook_attached && state.exec_identity_mode != nullptr && *exec_mode_result;
+        const bool kernel_hook_ready = lsm_enabled && state.exec_identity_hook_attached &&
+                                       state.exec_identity_mode != nullptr && *exec_mode_result;
         outcome.kernel_exec_identity_enabled = kernel_hook_ready;
 
         const bool runtime_deps_hook_ready = state.exec_identity_runtime_deps_hook_attached;
 
         if (outcome.policy_requirements.verified_exec_required && !kernel_hook_ready) {
-            const std::string detail =
-                "bprm_check_security_hook_attached=" +
-                std::string(state.exec_identity_hook_attached ? "true" : "false") +
-                ",exec_mode_enabled=" + std::string(*exec_mode_result ? "true" : "false");
+            const std::string detail = "bprm_check_security_hook_attached=" +
+                                       std::string(state.exec_identity_hook_attached ? "true" : "false") +
+                                       ",exec_mode_enabled=" + std::string(*exec_mode_result ? "true" : "false");
             if (!outcome.audit_only) {
                 if (enforce_gate_mode == EnforceGateMode::AuditFallback) {
                     outcome.audit_only = true;
@@ -236,8 +236,8 @@ Result<PolicyGateOutcome> evaluate_policy_gate(BpfState& state, const KernelFeat
         }
 
         if (outcome.policy_requirements.verified_exec_runtime_deps_required && !runtime_deps_hook_ready) {
-            const std::string detail =
-                "file_mmap_hook_attached=" + std::string(state.exec_identity_runtime_deps_hook_attached ? "true" : "false");
+            const std::string detail = "file_mmap_hook_attached=" +
+                                       std::string(state.exec_identity_runtime_deps_hook_attached ? "true" : "false");
             if (!outcome.audit_only) {
                 if (enforce_gate_mode == EnforceGateMode::AuditFallback) {
                     outcome.audit_only = true;
@@ -289,27 +289,27 @@ Result<PolicyGateOutcome> evaluate_policy_gate(BpfState& state, const KernelFeat
                     enforce_signal);
                 outcome.event_callbacks.on_exec = on_exec_identity_event;
                 outcome.event_callbacks.user_ctx = outcome.exec_identity_enforcer.get();
-                logger().log(SLOG_WARN("Falling back to userspace exec allowlist checks in audit mode")
-                                 .field("enforce_gate_mode", enforce_gate_mode_name(enforce_gate_mode))
-                                 .field("policy_hashes",
-                                        static_cast<int64_t>(outcome.policy_requirements.allow_binary_hashes.size()))
-                                 .field("allow_unknown_binary_identity", allow_unknown_binary_identity)
-                                 .field("kernel_hook_attached", state.exec_identity_hook_attached)
-                                 .field("exec_mode_enabled", *exec_mode_result)
-                                 .field("allow_exec_inode_entries",
-                                        static_cast<int64_t>(outcome.kernel_exec_identity_entries)));
+                logger().log(
+                    SLOG_WARN("Falling back to userspace exec allowlist checks in audit mode")
+                        .field("enforce_gate_mode", enforce_gate_mode_name(enforce_gate_mode))
+                        .field("policy_hashes",
+                               static_cast<int64_t>(outcome.policy_requirements.allow_binary_hashes.size()))
+                        .field("allow_unknown_binary_identity", allow_unknown_binary_identity)
+                        .field("kernel_hook_attached", state.exec_identity_hook_attached)
+                        .field("exec_mode_enabled", *exec_mode_result)
+                        .field("allow_exec_inode_entries", static_cast<int64_t>(outcome.kernel_exec_identity_entries)));
                 TRY(fail_if_strict_degrade_triggered());
             } else if (!outcome.audit_only) {
                 emit_runtime_state_change(RuntimeState::Degraded, "EXEC_IDENTITY_UNAVAILABLE",
                                           "kernel hook and allowlist prerequisites not satisfied");
-                logger().log(SLOG_ERROR("Exec allowlist policy requires kernel hook and populated allowlist")
-                                 .field("enforce_gate_mode", enforce_gate_mode_name(enforce_gate_mode))
-                                 .field("policy", applied_policy_path)
-                                 .field("lsm_enabled", lsm_enabled)
-                                 .field("hook_attached", state.exec_identity_hook_attached)
-                                 .field("exec_mode_enabled", *exec_mode_result)
-                                 .field("allow_exec_inode_entries",
-                                        static_cast<int64_t>(outcome.kernel_exec_identity_entries)));
+                logger().log(
+                    SLOG_ERROR("Exec allowlist policy requires kernel hook and populated allowlist")
+                        .field("enforce_gate_mode", enforce_gate_mode_name(enforce_gate_mode))
+                        .field("policy", applied_policy_path)
+                        .field("lsm_enabled", lsm_enabled)
+                        .field("hook_attached", state.exec_identity_hook_attached)
+                        .field("exec_mode_enabled", *exec_mode_result)
+                        .field("allow_exec_inode_entries", static_cast<int64_t>(outcome.kernel_exec_identity_entries)));
                 return Error(ErrorCode::PolicyApplyFailed,
                              "Exec allowlist policy is active but kernel enforcement is unavailable");
             } else {
@@ -320,13 +320,13 @@ Result<PolicyGateOutcome> evaluate_policy_gate(BpfState& state, const KernelFeat
                     enforce_signal);
                 outcome.event_callbacks.on_exec = on_exec_identity_event;
                 outcome.event_callbacks.user_ctx = outcome.exec_identity_enforcer.get();
-                logger().log(SLOG_WARN("Falling back to userspace exec allowlist checks in audit mode")
-                                 .field("policy_hashes",
-                                        static_cast<int64_t>(outcome.policy_requirements.allow_binary_hashes.size()))
-                                 .field("allow_unknown_binary_identity", allow_unknown_binary_identity)
-                                 .field("kernel_hook_attached", state.exec_identity_hook_attached)
-                                 .field("allow_exec_inode_entries",
-                                        static_cast<int64_t>(outcome.kernel_exec_identity_entries)));
+                logger().log(
+                    SLOG_WARN("Falling back to userspace exec allowlist checks in audit mode")
+                        .field("policy_hashes",
+                               static_cast<int64_t>(outcome.policy_requirements.allow_binary_hashes.size()))
+                        .field("allow_unknown_binary_identity", allow_unknown_binary_identity)
+                        .field("kernel_hook_attached", state.exec_identity_hook_attached)
+                        .field("allow_exec_inode_entries", static_cast<int64_t>(outcome.kernel_exec_identity_entries)));
                 TRY(fail_if_strict_degrade_triggered());
             }
         }
