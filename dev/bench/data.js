@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771268746191,
+  "lastUpdate": 1774043682799,
   "repoUrl": "https://github.com/ErenAri/Aegis-BPF",
   "entries": {
     "Benchmark": [
@@ -31218,6 +31218,102 @@ window.BENCHMARK_DATA = {
             "value": 66.29595347117049,
             "unit": "ns/iter",
             "extra": "iterations: 12\ncpu: 66.29280847801074 ns\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "erenari27@gmail.com",
+            "name": "Eren Arı",
+            "username": "ErenAri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8704ced6f5675d8bd430cc7b4d42f30023dd547c",
+          "message": "Merge pull request #62 from ErenAri/feat/v02-perf-posture-automation\n\nExpand network enforcement and modularize runtime plumbing",
+          "timestamp": "2026-03-21T00:43:43+03:00",
+          "tree_id": "103fa06ef9c05b51f6c17352efcf033eab576b3c",
+          "url": "https://github.com/ErenAri/Aegis-BPF/commit/8704ced6f5675d8bd430cc7b4d42f30023dd547c"
+        },
+        "date": 1774043681493,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "BM_Sha256Long/64_mean",
+            "value": 1506.0669585692342,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1505.9925434949344 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/512_mean",
+            "value": 3624.656105149658,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 3624.4674755768015 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/4096_mean",
+            "value": 20727.743632989368,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 20724.87867094672 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/32768_mean",
+            "value": 157197.53828323595,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 157189.14611372803 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/262144_mean",
+            "value": 1249703.4485294141,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1249627.3784907893 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/1048576_mean",
+            "value": 4991108.178529051,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 4990832.799525513 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/100_mean",
+            "value": 5126.499580771338,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 5128.225597758435 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/512_mean",
+            "value": 32922.01227244181,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 32927.44387331207 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/4096_mean",
+            "value": 267956.88360307703,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 267945.48665072076 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/10000_mean",
+            "value": 803971.1525840244,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 804007.3330911341 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseIpv6Full_mean",
+            "value": 70.4859031099266,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 70.47563123901965 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseCidrV6_mean",
+            "value": 52.99202817411262,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 52.9896584101036 ns\nthreads: 1"
           }
         ]
       }
