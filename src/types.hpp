@@ -57,7 +57,7 @@ inline constexpr const char* kControlLogPath = "/var/lib/aegisbpf/control_log.js
 inline constexpr const char* kControlLockPath = "/var/lib/aegisbpf/control.lock";
 inline constexpr const char* kBpfObjHashPath = "/etc/aegisbpf/aegis.bpf.sha256";
 inline constexpr const char* kBpfObjHashInstallPath = "/usr/lib/aegisbpf/aegis.bpf.sha256";
-inline constexpr const char* kCapabilitiesSchemaSemver = "1.2.0";
+inline constexpr const char* kCapabilitiesSchemaSemver = "1.5.0";
 inline constexpr uint32_t kLayoutVersion = 1;
 inline constexpr size_t kDenyPathMax = 256;
 inline constexpr uint8_t kEnforceSignalNone = 0;
@@ -79,6 +79,9 @@ enum EventType : uint32_t {
     EVENT_BLOCK = 2,
     EVENT_NET_CONNECT_BLOCK = 10,
     EVENT_NET_BIND_BLOCK = 11,
+    EVENT_NET_LISTEN_BLOCK = 12,
+    EVENT_NET_ACCEPT_BLOCK = 13,
+    EVENT_NET_SENDMSG_BLOCK = 14,
 };
 
 enum class EventLogSink { Stdout, Journald, StdoutAndJournald };
@@ -115,12 +118,12 @@ struct NetBlockEvent {
     uint8_t protocol; /* IPPROTO_TCP=6, IPPROTO_UDP=17 */
     uint16_t local_port;
     uint16_t remote_port;
-    uint8_t direction; /* 0=egress (connect), 1=bind */
+    uint8_t direction; /* 0=egress (connect), 1=bind, 2=listen, 3=accept, 4=send */
     uint8_t _pad;
     uint32_t remote_ipv4; /* Network byte order */
     uint8_t remote_ipv6[16];
     char action[8];     /* "AUDIT", "TERM", "KILL", or "BLOCK" */
-    char rule_type[16]; /* "ip", "port", "cidr" */
+    char rule_type[16]; /* "ip", "port", "cidr", "ip_port", "identity" */
 };
 
 struct Event {
@@ -140,6 +143,9 @@ struct BlockStats {
 struct NetBlockStats {
     uint64_t connect_blocks;
     uint64_t bind_blocks;
+    uint64_t listen_blocks;
+    uint64_t accept_blocks;
+    uint64_t sendmsg_blocks;
     uint64_t ringbuf_drops;
 };
 
@@ -328,7 +334,7 @@ static_assert(sizeof(IpPortV4Key) == 8, "IpPortV4Key size changed — update BPF
 static_assert(sizeof(IpPortV6Key) == 20, "IpPortV6Key size changed — update BPF struct");
 static_assert(sizeof(Ipv4LpmKey) == 8, "Ipv4LpmKey size changed — update BPF struct");
 static_assert(sizeof(Ipv6LpmKey) == 20, "Ipv6LpmKey size changed — update BPF struct");
-static_assert(sizeof(NetBlockStats) == 24, "NetBlockStats size changed — update BPF struct");
+static_assert(sizeof(NetBlockStats) == 48, "NetBlockStats size changed — update BPF struct");
 
 // Critical field offset assertions — ensure wire-compatible layout.
 static_assert(offsetof(BlockEvent, path) == 68, "BlockEvent::path offset changed");

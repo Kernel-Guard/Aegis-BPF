@@ -436,6 +436,45 @@ Result<void> attach_network_hooks(BpfState& state, bool lsm_enabled)
         }
     }
 
+    // Attach socket_listen hook
+    prog = bpf_object__find_program_by_name(state.obj, "handle_socket_listen");
+    if (prog) {
+        bpf_link* link = bpf_program__attach_lsm(prog);
+        int err = libbpf_get_error(link);
+        if (err || !link) {
+            logger().log(SLOG_WARN("Failed to attach socket_listen hook").field("error", static_cast<int64_t>(err)));
+        } else {
+            state.links.push_back(link);
+            logger().log(SLOG_INFO("Attached network socket_listen hook"));
+        }
+    }
+
+    // Attach socket_accept hook
+    prog = bpf_object__find_program_by_name(state.obj, "handle_socket_accept");
+    if (prog) {
+        bpf_link* link = bpf_program__attach_lsm(prog);
+        int err = libbpf_get_error(link);
+        if (err || !link) {
+            logger().log(SLOG_WARN("Failed to attach socket_accept hook").field("error", static_cast<int64_t>(err)));
+        } else {
+            state.links.push_back(link);
+            logger().log(SLOG_INFO("Attached network socket_accept hook"));
+        }
+    }
+
+    // Attach socket_sendmsg hook
+    prog = bpf_object__find_program_by_name(state.obj, "handle_socket_sendmsg");
+    if (prog) {
+        bpf_link* link = bpf_program__attach_lsm(prog);
+        int err = libbpf_get_error(link);
+        if (err || !link) {
+            logger().log(SLOG_WARN("Failed to attach socket_sendmsg hook").field("error", static_cast<int64_t>(err)));
+        } else {
+            state.links.push_back(link);
+            logger().log(SLOG_INFO("Attached network socket_sendmsg hook"));
+        }
+    }
+
     return {};
 }
 
@@ -966,6 +1005,9 @@ Result<NetBlockStats> read_net_block_stats(BpfState& state)
     for (const auto& v : vals) {
         out.connect_blocks += v.connect_blocks;
         out.bind_blocks += v.bind_blocks;
+        out.listen_blocks += v.listen_blocks;
+        out.accept_blocks += v.accept_blocks;
+        out.sendmsg_blocks += v.sendmsg_blocks;
         out.ringbuf_drops += v.ringbuf_drops;
     }
     return out;

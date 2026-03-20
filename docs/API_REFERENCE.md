@@ -91,7 +91,7 @@ struct PortRule {
 
 ### IpPortRule
 
-Exact remote endpoint blocking rule for `connect()`.
+Exact remote endpoint blocking rule for `connect()` and `sendmsg()`.
 
 ```cpp
 struct IpPortRule {
@@ -566,6 +566,9 @@ Result<NetBlockStats> read_net_block_stats(BpfState& state);
 struct NetBlockStats {
     uint64_t connect_blocks;  // Blocked outgoing connections
     uint64_t bind_blocks;     // Blocked bind operations
+    uint64_t listen_blocks;   // Blocked listen operations
+    uint64_t accept_blocks;   // Blocked accept operations
+    uint64_t sendmsg_blocks;  // Blocked sendmsg operations
     uint64_t ringbuf_drops;   // Dropped events
 };
 
@@ -719,6 +722,9 @@ enum EventType : uint32_t {
     EVENT_BLOCK = 2,             // File access blocked
     EVENT_NET_CONNECT_BLOCK = 10, // Network connect blocked
     EVENT_NET_BIND_BLOCK = 11,    // Network bind blocked
+    EVENT_NET_LISTEN_BLOCK = 12,  // Network listen blocked
+    EVENT_NET_ACCEPT_BLOCK = 13,  // Network accept blocked
+    EVENT_NET_SENDMSG_BLOCK = 14, // Network sendmsg blocked
 };
 ```
 
@@ -765,14 +771,14 @@ struct NetBlockEvent {
     char comm[16];
     uint8_t family;         // AF_INET=2, AF_INET6=10
     uint8_t protocol;       // IPPROTO_TCP=6, IPPROTO_UDP=17
-    uint16_t local_port;    // For bind events
-    uint16_t remote_port;   // For connect events
-    uint8_t direction;      // 0=egress, 1=bind
+    uint16_t local_port;    // For bind/listen/accept/send events
+    uint16_t remote_port;   // For connect/accept/send events
+    uint8_t direction;      // 0=egress, 1=bind, 2=listen, 3=accept, 4=send
     uint8_t _pad;
     uint32_t remote_ipv4;   // Network byte order
     uint8_t remote_ipv6[16];
     char action[8];         // "AUDIT", "BLOCK", "TERM", "KILL"
-    char rule_type[16];     // "ip", "port", "cidr"
+    char rule_type[16];     // "ip", "port", "cidr", "ip_port", "identity"
 };
 ```
 
