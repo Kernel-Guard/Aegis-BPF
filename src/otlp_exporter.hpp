@@ -43,7 +43,7 @@ class OtlpExporter {
         std::string namespace_name;        // k8s namespace (optional)
     };
 
-    explicit OtlpExporter(const Config& cfg);
+    explicit OtlpExporter(Config cfg);
     ~OtlpExporter();
 
     // Non-copyable, non-movable
@@ -67,8 +67,8 @@ class OtlpExporter {
   private:
     void worker_loop();
     void flush_batch();
-    std::string build_otlp_payload(const std::deque<std::string>& records);
-    bool http_post(const std::string& payload);
+    std::string build_otlp_payload(const std::deque<std::string>& records) const;
+    bool http_post(const std::string& payload) const;
 
     Config config_;
     std::thread worker_;

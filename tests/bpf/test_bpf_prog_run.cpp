@@ -16,16 +16,18 @@
  * are gracefully skipped via GTEST_SKIP().
  */
 
-#include <gtest/gtest.h>
-
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
+
+#include <arpa/inet.h>
+#include <gtest/gtest.h>
+#include <unistd.h>
+
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <string>
-#include <unistd.h>
 
 namespace {
 
@@ -87,8 +89,7 @@ class BpfProgRunTest : public ::testing::Test {
         }
 
         // Suppress libbpf debug output during tests
-        libbpf_set_print(
-            [](enum libbpf_print_level, const char*, va_list) -> int { return 0; });
+        libbpf_set_print([](enum libbpf_print_level, const char*, va_list) -> int { return 0; });
 
         obj_ = bpf_object__open(bpf_obj_path_.c_str());
         if (!obj_) {
@@ -177,18 +178,12 @@ bool BpfProgRunTest::loaded_ = false;
 TEST_F(BpfProgRunTest, AllExpectedProgramsExist)
 {
     const char* expected_progs[] = {
-        "handle_execve",
-        "handle_bprm_check_security",
-        "handle_file_open",
-        "handle_inode_permission",
-        "handle_openat",
-        "handle_fork",
-        "handle_exit",
-        "handle_socket_connect",
-        "handle_socket_bind",
-        "handle_socket_listen",
-        "handle_socket_accept",
-        "handle_socket_sendmsg",
+        "handle_execve",        "handle_bprm_check_security",
+        "handle_file_open",     "handle_inode_permission",
+        "handle_openat",        "handle_fork",
+        "handle_exit",          "handle_socket_connect",
+        "handle_socket_bind",   "handle_socket_listen",
+        "handle_socket_accept", "handle_socket_sendmsg",
         "handle_file_mmap",
     };
 
@@ -200,11 +195,12 @@ TEST_F(BpfProgRunTest, AllExpectedProgramsExist)
 TEST_F(BpfProgRunTest, AllExpectedMapsExist)
 {
     const char* expected_maps[] = {
-        "process_tree",   "allow_cgroup_map",  "allow_exec_inode_map", "deny_inode_map",
-        "deny_path_map",  "deny_ipv4",         "deny_ipv6",           "deny_port",
-        "deny_cidr_v4",   "deny_cidr_v6",      "deny_ip_port_v4",     "deny_ip_port_v6",
-        "block_stats",    "net_block_stats",    "events",              "agent_meta_map",
-        "survival_allowlist",
+        "process_tree",   "allow_cgroup_map",   "allow_exec_inode_map",
+        "deny_inode_map", "deny_path_map",      "deny_ipv4",
+        "deny_ipv6",      "deny_port",          "deny_cidr_v4",
+        "deny_cidr_v6",   "deny_ip_port_v4",    "deny_ip_port_v6",
+        "block_stats",    "net_block_stats",    "events",
+        "agent_meta_map", "survival_allowlist",
     };
 
     for (const char* name : expected_maps) {
@@ -338,14 +334,14 @@ TEST_F(BpfProgRunTest, LSMProgramsHaveCorrectType)
 {
     const char* lsm_progs[] = {
         "handle_bprm_check_security", "handle_file_open",      "handle_inode_permission",
-        "handle_file_mmap",           "handle_socket_connect",  "handle_socket_bind",
-        "handle_socket_listen",       "handle_socket_accept",   "handle_socket_sendmsg",
+        "handle_file_mmap",           "handle_socket_connect", "handle_socket_bind",
+        "handle_socket_listen",       "handle_socket_accept",  "handle_socket_sendmsg",
     };
 
     for (const char* name : lsm_progs) {
         struct bpf_program* prog = find_prog(name);
         if (!prog) {
-            continue;  // Already caught by AllExpectedProgramsExist
+            continue; // Already caught by AllExpectedProgramsExist
         }
         enum bpf_prog_type type = bpf_program__type(prog);
         EXPECT_EQ(type, BPF_PROG_TYPE_LSM)
@@ -458,4 +454,4 @@ TEST_F(BpfProgRunTest, SurvivalAllowlistHasSmallCapacity)
     EXPECT_EQ(bpf_map__max_entries(map), 256U);
 }
 
-}  // namespace
+} // namespace

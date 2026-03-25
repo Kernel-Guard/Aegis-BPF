@@ -9,13 +9,14 @@
 #include <chrono>
 #include <cstring>
 #include <sstream>
+#include <utility>
 
 #include "logging.hpp"
 #include "utils.hpp"
 
 namespace aegis {
 
-OtlpExporter::OtlpExporter(const Config& cfg) : config_(cfg) {}
+OtlpExporter::OtlpExporter(Config cfg) : config_(std::move(cfg)) {}
 
 OtlpExporter::~OtlpExporter()
 {
@@ -263,7 +264,7 @@ void OtlpExporter::flush_batch()
     }
 }
 
-std::string OtlpExporter::build_otlp_payload(const std::deque<std::string>& records)
+std::string OtlpExporter::build_otlp_payload(const std::deque<std::string>& records) const
 {
     std::ostringstream oss;
     oss << "{\"resourceLogs\":[{\"resource\":{\"attributes\":[" << otlp_attr("service.name", config_.service_name);
@@ -287,7 +288,7 @@ std::string OtlpExporter::build_otlp_payload(const std::deque<std::string>& reco
     return oss.str();
 }
 
-bool OtlpExporter::http_post(const std::string& payload)
+bool OtlpExporter::http_post(const std::string& payload) const
 {
     // Parse endpoint URL: http://host:port/path
     std::string url = config_.endpoint;

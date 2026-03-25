@@ -113,7 +113,7 @@ Result<void> setup_agent_cgroup(BpfState& state)
         return Error::system(errno, "stat failed for " + std::string(kAgentCgroup));
     }
 
-    uint64_t cgid = static_cast<uint64_t>(st.st_ino);
+    auto cgid = static_cast<uint64_t>(st.st_ino);
 
     TRY(bump_memlock_rlimit());
 

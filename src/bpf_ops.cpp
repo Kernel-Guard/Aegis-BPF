@@ -207,7 +207,8 @@ Result<void> load_bpf(bool reuse_pins, bool attach_links, BpfState& state)
 
         // Check for custom BTF path when kernel doesn't have built-in BTF.
         // This enables CO-RE on older kernels using BTFHub-generated minimized BTFs.
-        LIBBPF_OPTS(bpf_object_open_opts, open_opts);
+        struct bpf_object_open_opts open_opts = {};
+        open_opts.sz = sizeof(open_opts);
         std::string btf_custom_path;
 
         if (access("/sys/kernel/btf/vmlinux", F_OK) != 0) {

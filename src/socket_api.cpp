@@ -9,12 +9,13 @@
 #include <algorithm>
 #include <cerrno>
 #include <cstring>
+#include <utility>
 
 #include "logging.hpp"
 
 namespace aegis {
 
-SocketApiServer::SocketApiServer(const Config& cfg) : config_(cfg) {}
+SocketApiServer::SocketApiServer(Config cfg) : config_(std::move(cfg)) {}
 
 SocketApiServer::~SocketApiServer()
 {

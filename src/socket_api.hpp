@@ -35,7 +35,7 @@ class SocketApiServer {
     using StatusCallback = std::function<std::string()>;
     using StatsCallback = std::function<std::string()>;
 
-    explicit SocketApiServer(const Config& cfg);
+    explicit SocketApiServer(Config cfg);
     ~SocketApiServer();
 
     // Non-copyable
@@ -58,7 +58,7 @@ class SocketApiServer {
     void accept_loop();
     void handle_client(int client_fd);
     std::string handle_request(const std::string& request, int client_fd);
-    std::string build_health_response();
+    static std::string build_health_response();
 
     Config config_;
     int listen_fd_ = -1;

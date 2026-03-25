@@ -59,10 +59,10 @@ bool parse_proc_stat(uint32_t pid, ProcInfo& out)
 #pragma GCC diagnostic ignored "-Wformat"
     int matched = sscanf(rest,
                          "%c %u %*d %*d %*d %*d %*u " // state ppid pgrp session tty tpgid flags
-                         "%*lu %*lu %*lu %*lu "        // minflt cminflt majflt cmajflt
-                         "%*lu %*lu %*ld %*ld "        // utime stime cutime cstime
-                         "%*ld %*ld %*ld %*ld "        // priority nice num_threads itrealvalue
-                         "%llu",                       // starttime
+                         "%*lu %*lu %*lu %*lu "       // minflt cminflt majflt cmajflt
+                         "%*lu %*lu %*ld %*ld "       // utime stime cutime cstime
+                         "%*ld %*ld %*ld %*ld "       // priority nice num_threads itrealvalue
+                         "%llu",                      // starttime
                          &state, &ppid, &starttime);
 #pragma GCC diagnostic pop
 
@@ -122,7 +122,7 @@ Result<ProcScanResult> reconcile_proc_tree(const BpfState& state)
         if (*endptr != '\0' || pid_ul == 0)
             continue;
 
-        uint32_t pid = static_cast<uint32_t>(pid_ul);
+        auto pid = static_cast<uint32_t>(pid_ul);
         result.processes_scanned++;
 
         // Check if already in process_tree
