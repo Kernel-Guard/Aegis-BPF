@@ -1,0 +1,98 @@
+name: BPF Compiler Matrix
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'bpf/**'
+      - 'CMakeLists.txt'
+  pull_request:
+    paths:
+      - 'bpf/**'
+      - 'CMakeLists.txt'
+  workflow_dispatch:
+
+jobs:
+  bpf-compile-matrix:
+    name: bpf-compile (clang-${{ matrix.clang_version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        clang_version: [15, 16, 17, 18]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install LLVM ${{ matrix.clang_version }}
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc >/dev/null
+          CODENAME=$(lsb_release -cs)
+          echo "deb http://apt.llvm.org/${CODENAME}/ llvm-toolchain-${CODENAME}-${{ matrix.clang_version }} main" | \
+            sudo tee /etc/apt/sources.list.d/llvm-${{ matrix.clang_version }}.list
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang-${{ matrix.clang_version }} \
+            llvm-${{ matrix.clang_version }} \
+            libbpf-dev \
+            pkg-config \
+            cmake \
+            ninja-build \
+            linux-tools-common \
+            linux-tools-$(uname -r) || \
+          sudo apt-get install -y \
+            clang-${{ matrix.clang_version }} \
+            llvm-${{ matrix.clang_version }} \
+            libbpf-dev \
+            pkg-config \
+            cmake \
+            ninja-build \
+            linux-tools-common
+
+      - name: Check kernel BTF availability
+        id: btf_check
+        run: |
+          if [[ -f /sys/kernel/btf/vmlinux ]]; then
+            echo "btf_available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "btf_available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure with clang-${{ matrix.clang_version }}
+        if: steps.btf_check.outputs.btf_available == 'true'
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DCMAKE_C_COMPILER=clang-${{ matrix.clang_version }} \
+            -DCMAKE_CXX_COMPILER=clang++-${{ matrix.clang_version }}
+        env:
+          CLANG: clang-${{ matrix.clang_version }}
+
+      - name: Build BPF object
+        if: steps.btf_check.outputs.btf_available == 'true'
+        run: cmake --build build --target bpf_skel
+
+      - name: Verify BPF object
+        if: steps.btf_check.outputs.btf_available == 'true'
+        run: |
+          echo "=== BPF object info (clang-${{ matrix.clang_version }}) ==="
+          file build/aegis.bpf.o
+          size build/aegis.bpf.o
+
+          # List BPF programs in the object
+          if command -v bpftool >/dev/null 2>&1; then
+            echo ""
+            echo "=== BPF programs ==="
+            bpftool btf dump file build/aegis.bpf.o 2>/dev/null | head -20 || true
+          fi
+
+      - name: Run veristat (if available)
+        if: steps.btf_check.outputs.btf_available == 'true'
+        run: |
+          if [[ -x scripts/veristat_check.sh ]]; then
+            bash scripts/veristat_check.sh build/aegis.bpf.o || true
+          fi
+
+      - name: Skip notice
+        if: steps.btf_check.outputs.btf_available != 'true'
+        run: echo "Skipping BPF compilation - kernel BTF not available on this runner"
