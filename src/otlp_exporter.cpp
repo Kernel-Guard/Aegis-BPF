@@ -305,7 +305,7 @@ bool OtlpExporter::http_post(const std::string& payload) const
     size_t path_start = url.find('/');
     if (path_start != std::string::npos) {
         path = url.substr(path_start);
-        url = url.substr(0, path_start);
+        url.resize(path_start);
     }
 
     size_t colon = url.find(':');

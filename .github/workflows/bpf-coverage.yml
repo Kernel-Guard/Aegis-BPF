@@ -22,10 +22,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang llvm libbpf-dev pkg-config cmake ninja-build \
             python3 python3-pip linux-tools-common linux-tools-generic 2>/dev/null || true
-          # The bpftool shim needs a matching linux-tools package; bypass it
+          # The /usr/sbin/bpftool shim requires matching linux-tools for the
+          # running kernel.  Replace it with the real binary so cmake picks it up.
           REAL_BPFTOOL=$(find /usr/lib/linux-tools/ -name bpftool -type f 2>/dev/null | sort -V | tail -1)
           if [[ -n "$REAL_BPFTOOL" ]]; then
-            sudo ln -sf "$REAL_BPFTOOL" /usr/local/bin/bpftool
+            sudo cp "$REAL_BPFTOOL" /usr/sbin/bpftool
           fi
 
       - name: Check kernel BTF
