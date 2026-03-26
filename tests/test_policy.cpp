@@ -491,6 +491,93 @@ version=1
     EXPECT_FALSE(result->deny_bpf);
 }
 
+// --- Policy conflict detection tests ---
+
+TEST_F(PolicyTest, ConflictDetectionDenyBpfWithoutModuleLoad)
+{
+    std::string content = R"(
+version=1
+
+[deny_path]
+/usr/bin/dangerous
+
+[deny_bpf]
+)";
+    std::string path = CreateTestPolicy(content);
+    PolicyIssues issues;
+    auto result = parse_policy_file(path, issues);
+
+    ASSERT_TRUE(result);
+    detect_policy_conflicts(*result, issues);
+    EXPECT_TRUE(issues.has_warnings());
+    // Should warn about deny_bpf without deny_module_load
+    bool found_bpf_warning = false;
+    for (const auto& w : issues.warnings) {
+        if (w.find("deny_module_load") != std::string::npos) {
+            found_bpf_warning = true;
+        }
+    }
+    EXPECT_TRUE(found_bpf_warning) << "Expected warning about deny_bpf without deny_module_load";
+}
+
+TEST_F(PolicyTest, ConflictDetectionKernelHooksWithoutFileRules)
+{
+    std::string content = R"(
+version=1
+
+[deny_ptrace]
+
+[deny_module_load]
+)";
+    std::string path = CreateTestPolicy(content);
+    PolicyIssues issues;
+    auto result = parse_policy_file(path, issues);
+
+    ASSERT_TRUE(result);
+    detect_policy_conflicts(*result, issues);
+    EXPECT_TRUE(issues.has_warnings());
+    bool found_advisory = false;
+    for (const auto& w : issues.warnings) {
+        if (w.find("no file deny rules") != std::string::npos) {
+            found_advisory = true;
+        }
+    }
+    EXPECT_TRUE(found_advisory) << "Expected advisory about kernel hooks without file rules";
+}
+
+TEST_F(PolicyTest, NoConflictWarningsForCleanPolicy)
+{
+    std::string content = R"(
+version=1
+
+[deny_path]
+/usr/bin/dangerous
+
+[deny_ptrace]
+
+[deny_module_load]
+
+[deny_bpf]
+)";
+    std::string path = CreateTestPolicy(content);
+    PolicyIssues issues;
+    auto result = parse_policy_file(path, issues);
+
+    ASSERT_TRUE(result);
+    // Clear any parse-time warnings before conflict detection
+    issues.warnings.clear();
+    detect_policy_conflicts(*result, issues);
+    // With all three kernel hooks and file rules, the only warning would be none
+    // (deny_bpf+deny_module_load covers T1547.006, and file rules are present)
+    bool found_bpf_without_module = false;
+    for (const auto& w : issues.warnings) {
+        if (w.find("[deny_bpf] is enabled but [deny_module_load] is not") != std::string::npos) {
+            found_bpf_without_module = true;
+        }
+    }
+    EXPECT_FALSE(found_bpf_without_module) << "Should not warn about deny_bpf when deny_module_load is also enabled";
+}
+
 // --- Golden vector tests ---
 
 TEST_F(PolicyTest, GoldenDenyPathBasic)
