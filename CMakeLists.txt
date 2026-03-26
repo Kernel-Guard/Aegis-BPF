@@ -188,6 +188,9 @@ if(NOT SKIP_BPF_BUILD)
         VERBATIM
     )
 
+    # Target for just the BPF object (no skeleton generation)
+    add_custom_target(bpf_obj DEPENDS ${BPF_OBJECT})
+
     set_source_files_properties(${SKELETON_HEADER} PROPERTIES GENERATED TRUE)
     add_custom_target(bpf_skel DEPENDS ${SKELETON_HEADER})
 

@@ -23,10 +23,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang llvm libbpf-dev pkg-config cmake ninja-build \
-            bpftool || \
-          sudo apt-get install -y clang llvm libbpf-dev pkg-config cmake ninja-build \
-            linux-tools-common
-          command -v bpftool >/dev/null 2>&1 || sudo apt-get install -y linux-tools-$(uname -r) 2>/dev/null || true
+            linux-tools-common linux-tools-generic 2>/dev/null || true
+          # The bpftool shim needs a matching linux-tools package; bypass it
+          REAL_BPFTOOL=$(find /usr/lib/linux-tools/ -name bpftool -type f 2>/dev/null | sort -V | tail -1)
+          if [[ -n "$REAL_BPFTOOL" ]]; then
+            sudo ln -sf "$REAL_BPFTOOL" /usr/local/bin/bpftool
+          fi
 
       - name: Check kernel BTF availability
         id: btf_check
