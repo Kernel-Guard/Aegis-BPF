@@ -7,6 +7,7 @@
 #include <cstring>
 #include <sstream>
 
+#include "k8s_identity.hpp"
 #include "logging.hpp"
 #include "utils.hpp"
 
@@ -157,6 +158,26 @@ void journal_send_control_change(const std::string& payload, const std::string& 
 }
 #endif
 
+namespace {
+/// Append Kubernetes identity fields to a JSON stream if running in K8s.
+/// Must be called before the closing '}' of the JSON object.
+void append_k8s_identity(std::ostringstream& oss, uint32_t pid) {
+    auto& cache = k8s_identity_cache();
+    if (!cache.is_kubernetes()) return;
+
+    std::string cid = parse_container_id_from_proc(pid);
+    if (cid.empty()) return;
+
+    if (const auto* id = cache.lookup_by_container(cid)) {
+        oss << ",\"k8s_pod\":\"" << json_escape(id->pod_name) << "\"";
+        oss << ",\"k8s_namespace\":\"" << json_escape(id->namespace_name) << "\"";
+        if (!id->service_account.empty()) {
+            oss << ",\"k8s_service_account\":\"" << json_escape(id->service_account) << "\"";
+        }
+    }
+}
+} // namespace
+
 void print_exec_event(const ExecEvent& ev)
 {
     std::ostringstream oss;
@@ -170,7 +191,9 @@ void print_exec_event(const ExecEvent& ev)
         oss << ",\"trace_id\":\"" << json_escape(exec_id) << "\"";
     }
     oss << ",\"cgid\":" << ev.cgid << ",\"cgroup_path\":\"" << json_escape(cgpath) << "\"" << ",\"comm\":\""
-        << json_escape(comm) << "\"}";
+        << json_escape(comm) << "\"";
+    append_k8s_identity(oss, ev.pid);
+    oss << "}";
 
     std::string payload = oss.str();
     if (sink_wants_stdout(g_event_sink)) {
@@ -212,7 +235,9 @@ void print_block_event(const BlockEvent& ev)
         oss << ",\"resolved_path\":\"" << json_escape(resolved_path) << "\"";
     }
     oss << ",\"ino\":" << ev.ino << ",\"dev\":" << ev.dev << ",\"action\":\"" << json_escape(action) << "\",\"comm\":\""
-        << json_escape(comm) << "\"}";
+        << json_escape(comm) << "\"";
+    append_k8s_identity(oss, ev.pid);
+    oss << "}";
 
     std::string payload = oss.str();
     if (sink_wants_stdout(g_event_sink)) {
@@ -320,7 +345,9 @@ void print_net_block_event(const NetBlockEvent& ev)
     }
 
     oss << ",\"rule_type\":\"" << json_escape(rule_type) << "\"" << ",\"action\":\"" << json_escape(action) << "\""
-        << ",\"comm\":\"" << json_escape(comm) << "\"}";
+        << ",\"comm\":\"" << json_escape(comm) << "\"";
+    append_k8s_identity(oss, ev.pid);
+    oss << "}";
 
     std::string payload = oss.str();
     if (sink_wants_stdout(g_event_sink)) {
@@ -391,7 +418,9 @@ void print_forensic_event(const ForensicEvent& ev)
         << ",\"exec_dev\":" << ev.exec_dev << ",\"exec_stage\":" << static_cast<int>(ev.exec_stage)
         << ",\"verified_exec\":" << (ev.verified_exec ? "true" : "false")
         << ",\"exec_identity_known\":" << (ev.exec_identity_known ? "true" : "false") << ",\"action\":\""
-        << json_escape(action) << "\"" << ",\"comm\":\"" << json_escape(comm) << "\"}";
+        << json_escape(action) << "\"" << ",\"comm\":\"" << json_escape(comm) << "\"";
+    append_k8s_identity(oss, ev.pid);
+    oss << "}";
 
     if (sink_wants_stdout(g_event_sink)) {
         std::cout << oss.str() << '\n';

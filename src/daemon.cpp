@@ -27,6 +27,7 @@
 #include "daemon_runtime.hpp"
 #include "daemon_test_hooks.hpp"
 #include "events.hpp"
+#include "k8s_identity.hpp"
 #include "kernel_features.hpp"
 #include "logging.hpp"
 #include "map_monitor.hpp"
@@ -424,6 +425,19 @@ int daemon_run(bool audit_only, bool enable_seccomp, uint32_t deadman_ttl, uint8
         }
     }
 
+    // Load Kubernetes identity cache (non-fatal if not available)
+    {
+        static constexpr const char* kIdentityCachePath = "/etc/aegisbpf/k8s-identity-cache.json";
+        auto& id_cache = k8s_identity_cache();
+        if (id_cache.load_from_file(kIdentityCachePath)) {
+            logger().log(SLOG_INFO("Kubernetes identity cache loaded")
+                             .field("entries", static_cast<int64_t>(id_cache.size())));
+        } else if (id_cache.is_kubernetes()) {
+            logger().log(SLOG_WARN("Kubernetes environment detected but identity cache not loaded")
+                             .field("path", kIdentityCachePath));
+        }
+    }
+
     // Detect kernel features for graceful degradation
     KernelFeatures features{};
     {
@@ -772,6 +786,9 @@ int daemon_run(bool audit_only, bool enable_seccomp, uint32_t deadman_ttl, uint8
     }
 
     int err = 0;
+    uint32_t poll_count = 0;
+    // Reload K8s identity cache every ~60s (240 iterations × 250ms poll timeout)
+    static constexpr uint32_t kIdentityReloadInterval = 240;
     ScopedSpan event_loop_span("daemon.event_loop", trace_id, root_span.span_id());
     while (!exit_requested()) {
         err = ring_buffer__poll(rb.get(), 250);
@@ -788,6 +805,12 @@ int daemon_run(bool audit_only, bool enable_seccomp, uint32_t deadman_ttl, uint8
             event_loop_span.fail("Ring buffer poll failed");
             logger().log(SLOG_ERROR("Ring buffer poll failed").error_code(-err));
             break;
+        }
+
+        // Periodically reload K8s identity cache
+        if (++poll_count >= kIdentityReloadInterval) {
+            poll_count = 0;
+            k8s_identity_cache().reload();
         }
     }
 
