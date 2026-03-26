@@ -244,6 +244,7 @@ jobs:
             --suppress=knownConditionTrueFalse \
             --suppress=unusedFunction \
             --suppress=checkersReport \
+            --suppress=checkLevelNormal \
             -I src \
             src/ tests/
 

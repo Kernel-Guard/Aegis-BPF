@@ -45,25 +45,31 @@ jobs:
             pkg-config \
             cmake \
             ninja-build \
-            linux-tools-common linux-tools-generic 2>/dev/null || true
-          # The /usr/sbin/bpftool shim requires matching linux-tools for the
-          # running kernel.  Replace it with the real binary so cmake picks it up.
-          REAL_BPFTOOL=$(find /usr/lib/linux-tools/ -name bpftool -type f 2>/dev/null | sort -V | tail -1)
-          if [[ -n "$REAL_BPFTOOL" ]]; then
-            sudo cp "$REAL_BPFTOOL" /usr/sbin/bpftool
+            linux-tools-common 2>/dev/null || true
+          # Try multiple strategies to get a working bpftool
+          sudo apt-get install -y linux-tools-$(uname -r) 2>/dev/null || \
+            sudo apt-get install -y linux-tools-generic 2>/dev/null || \
+            sudo apt-get install -y bpftool 2>/dev/null || true
+          if ! bpftool version >/dev/null 2>&1; then
+            REAL=$(find /usr/lib/linux-tools/ -name bpftool -type f 2>/dev/null | sort -V | tail -1)
+            if [[ -n "$REAL" ]]; then
+              sudo cp "$REAL" /usr/sbin/bpftool
+            fi
           fi
 
-      - name: Check kernel BTF availability
-        id: btf_check
+      - name: Check BPF tooling availability
+        id: bpf_check
         run: |
-          if [[ -f /sys/kernel/btf/vmlinux ]]; then
-            echo "btf_available=true" >> "$GITHUB_OUTPUT"
+          if [[ -f /sys/kernel/btf/vmlinux ]] && bpftool version >/dev/null 2>&1; then
+            echo "bpf_ready=true" >> "$GITHUB_OUTPUT"
+            echo "BTF available and bpftool works: $(bpftool version 2>&1 | head -1)"
           else
-            echo "btf_available=false" >> "$GITHUB_OUTPUT"
+            echo "bpf_ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping — BTF or working bpftool not available on this runner"
           fi
 
       - name: Configure with clang-${{ matrix.clang_version }}
-        if: steps.btf_check.outputs.btf_available == 'true'
+        if: steps.bpf_check.outputs.bpf_ready == 'true'
         run: |
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
@@ -74,7 +80,7 @@ jobs:
           CLANG: clang-${{ matrix.clang_version }}
 
       - name: Build BPF object
-        if: steps.btf_check.outputs.btf_available == 'true'
+        if: steps.bpf_check.outputs.bpf_ready == 'true'
         run: |
           # Build BPF object (the primary gate for this matrix)
           cmake --build build --target bpf_obj
@@ -82,13 +88,12 @@ jobs:
           cmake --build build --target bpf_skel || echo "::warning::Skeleton generation failed (expected on older bpftool)"
 
       - name: Verify BPF object
-        if: steps.btf_check.outputs.btf_available == 'true'
+        if: steps.bpf_check.outputs.bpf_ready == 'true'
         run: |
           echo "=== BPF object info (clang-${{ matrix.clang_version }}) ==="
           file build/aegis.bpf.o
           size build/aegis.bpf.o
 
-          # List BPF programs in the object
           if command -v bpftool >/dev/null 2>&1; then
             echo ""
             echo "=== BPF programs ==="
@@ -96,12 +101,8 @@ jobs:
           fi
 
       - name: Run veristat (if available)
-        if: steps.btf_check.outputs.btf_available == 'true'
+        if: steps.bpf_check.outputs.bpf_ready == 'true'
         run: |
           if [[ -x scripts/veristat_check.sh ]]; then
             bash scripts/veristat_check.sh build/aegis.bpf.o || true
           fi
-
-      - name: Skip notice
-        if: steps.btf_check.outputs.btf_available != 'true'
-        run: echo "Skipping BPF compilation - kernel BTF not available on this runner"

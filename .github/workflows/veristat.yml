@@ -23,38 +23,44 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang llvm libbpf-dev pkg-config cmake ninja-build \
-            linux-tools-common linux-tools-generic 2>/dev/null || true
-          # The /usr/sbin/bpftool shim requires matching linux-tools for the
-          # running kernel.  Replace it with the real binary so cmake picks it up.
-          REAL_BPFTOOL=$(find /usr/lib/linux-tools/ -name bpftool -type f 2>/dev/null | sort -V | tail -1)
-          if [[ -n "$REAL_BPFTOOL" ]]; then
-            sudo cp "$REAL_BPFTOOL" /usr/sbin/bpftool
+            linux-tools-common 2>/dev/null || true
+          # Try multiple strategies to get a working bpftool
+          sudo apt-get install -y linux-tools-$(uname -r) 2>/dev/null || \
+            sudo apt-get install -y linux-tools-generic 2>/dev/null || \
+            sudo apt-get install -y bpftool 2>/dev/null || true
+          # If /usr/sbin/bpftool is still the broken shim, replace it
+          if ! bpftool version >/dev/null 2>&1; then
+            REAL=$(find /usr/lib/linux-tools/ -name bpftool -type f 2>/dev/null | sort -V | tail -1)
+            if [[ -n "$REAL" ]]; then
+              sudo cp "$REAL" /usr/sbin/bpftool
+            fi
           fi
 
-      - name: Check kernel BTF availability
-        id: btf_check
+      - name: Check BPF tooling availability
+        id: bpf_check
         run: |
-          if [[ -f /sys/kernel/btf/vmlinux ]]; then
-            echo "btf_available=true" >> "$GITHUB_OUTPUT"
+          if [[ -f /sys/kernel/btf/vmlinux ]] && bpftool version >/dev/null 2>&1; then
+            echo "bpf_ready=true" >> "$GITHUB_OUTPUT"
+            echo "BTF available and bpftool works: $(bpftool version 2>&1 | head -1)"
           else
-            echo "btf_available=false" >> "$GITHUB_OUTPUT"
-            echo "Warning: No kernel BTF; veristat requires BTF for BPF compilation"
+            echo "bpf_ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping — BTF or working bpftool not available on this runner"
           fi
 
       - name: Configure (BPF build enabled)
-        if: steps.btf_check.outputs.btf_available == 'true'
+        if: steps.bpf_check.outputs.bpf_ready == 'true'
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
 
       - name: Build BPF object
-        if: steps.btf_check.outputs.btf_available == 'true'
+        if: steps.bpf_check.outputs.bpf_ready == 'true'
         run: cmake --build build --target bpf_skel
 
       - name: Run veristat complexity check
-        if: steps.btf_check.outputs.btf_available == 'true'
+        if: steps.bpf_check.outputs.bpf_ready == 'true'
         run: bash scripts/veristat_check.sh build/aegis.bpf.o
 
       - name: Update baseline (main branch only)
-        if: steps.btf_check.outputs.btf_available == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: steps.bpf_check.outputs.bpf_ready == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           bash scripts/veristat_check.sh build/aegis.bpf.o --update-baseline
           if git diff --quiet config/veristat_baseline.json; then
@@ -64,12 +70,8 @@ jobs:
           fi
 
       - name: Upload veristat baseline
-        if: steps.btf_check.outputs.btf_available == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: steps.bpf_check.outputs.bpf_ready == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: veristat-baseline
           path: config/veristat_baseline.json
-
-      - name: Skip notice
-        if: steps.btf_check.outputs.btf_available != 'true'
-        run: echo "Skipping veristat - kernel BTF not available on this runner"

@@ -21,25 +21,30 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang llvm libbpf-dev pkg-config cmake ninja-build \
-            python3 python3-pip linux-tools-common linux-tools-generic 2>/dev/null || true
-          # The /usr/sbin/bpftool shim requires matching linux-tools for the
-          # running kernel.  Replace it with the real binary so cmake picks it up.
-          REAL_BPFTOOL=$(find /usr/lib/linux-tools/ -name bpftool -type f 2>/dev/null | sort -V | tail -1)
-          if [[ -n "$REAL_BPFTOOL" ]]; then
-            sudo cp "$REAL_BPFTOOL" /usr/sbin/bpftool
+            python3 python3-pip linux-tools-common 2>/dev/null || true
+          sudo apt-get install -y linux-tools-$(uname -r) 2>/dev/null || \
+            sudo apt-get install -y linux-tools-generic 2>/dev/null || \
+            sudo apt-get install -y bpftool 2>/dev/null || true
+          if ! bpftool version >/dev/null 2>&1; then
+            REAL=$(find /usr/lib/linux-tools/ -name bpftool -type f 2>/dev/null | sort -V | tail -1)
+            if [[ -n "$REAL" ]]; then
+              sudo cp "$REAL" /usr/sbin/bpftool
+            fi
           fi
 
-      - name: Check kernel BTF
-        id: btf_check
+      - name: Check BPF tooling availability
+        id: bpf_check
         run: |
-          if [[ -f /sys/kernel/btf/vmlinux ]]; then
-            echo "btf_available=true" >> "$GITHUB_OUTPUT"
+          if [[ -f /sys/kernel/btf/vmlinux ]] && bpftool version >/dev/null 2>&1; then
+            echo "bpf_ready=true" >> "$GITHUB_OUTPUT"
+            echo "BTF available and bpftool works: $(bpftool version 2>&1 | head -1)"
           else
-            echo "btf_available=false" >> "$GITHUB_OUTPUT"
+            echo "bpf_ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping — BTF or working bpftool not available on this runner"
           fi
 
       - name: Build BPF object with debug info
-        if: steps.btf_check.outputs.btf_available == 'true'
+        if: steps.bpf_check.outputs.bpf_ready == 'true'
         run: |
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
@@ -47,7 +52,7 @@ jobs:
           cmake --build build --target bpf_skel
 
       - name: Analyze BPF program sections
-        if: steps.btf_check.outputs.btf_available == 'true'
+        if: steps.bpf_check.outputs.bpf_ready == 'true'
         run: |
           echo "=== BPF Program Section Analysis ==="
           llvm-objdump -h build/aegis.bpf.o 2>/dev/null | grep -E '^\s+[0-9]' || true
@@ -58,7 +63,6 @@ jobs:
 
           echo ""
           echo "=== Instruction Counts Per Program ==="
-          # Count instructions per section to track code path coverage potential
           python3 << 'PYEOF'
           import subprocess, re, json
 
@@ -91,18 +95,13 @@ jobs:
               pct = (insns / total * 100) if total else 0
               print(f"  {name}: {insns} instructions ({pct:.1f}%)")
 
-          # Write summary for artifact
           with open("build/bpf_coverage_summary.json", "w") as f:
               json.dump({"programs": programs, "total_instructions": total}, f, indent=2)
           PYEOF
 
       - name: Upload BPF coverage summary
-        if: steps.btf_check.outputs.btf_available == 'true'
+        if: steps.bpf_check.outputs.bpf_ready == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: bpf-coverage-summary
           path: build/bpf_coverage_summary.json
-
-      - name: Skip notice
-        if: steps.btf_check.outputs.btf_available != 'true'
-        run: echo "Skipping BPF coverage - kernel BTF not available"
