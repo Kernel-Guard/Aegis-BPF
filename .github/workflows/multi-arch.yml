@@ -27,10 +27,21 @@ jobs:
       - name: Install arm64 cross-compilation toolchain
         run: |
           sudo dpkg --add-architecture arm64
-          # Add arm64 package sources
-          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list.d/ubuntu.sources || true
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
-          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+
+          # On ubuntu-24.04 (noble) the default apt sources use DEB822 format.
+          # Restrict existing sources to amd64 and add arm64 from ports.
+          if [[ -f /etc/apt/sources.list.d/ubuntu.sources ]]; then
+            sudo sed -i '/^Architectures:/d' /etc/apt/sources.list.d/ubuntu.sources
+            sudo sed -i '/^Types:/a Architectures: amd64' /etc/apt/sources.list.d/ubuntu.sources
+          fi
+
+          # Add arm64 sources from ports.ubuntu.com
+          cat <<'EOF' | sudo tee /etc/apt/sources.list.d/arm64-ports.list
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-security main restricted universe multiverse
+          EOF
+
           sudo apt-get update
           sudo apt-get install -y \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \

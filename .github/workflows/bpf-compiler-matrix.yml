@@ -18,8 +18,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        clang_version: [15, 16, 17, 18]
-    runs-on: ubuntu-24.04
+        include:
+          - clang_version: 15
+            runner: ubuntu-22.04
+          - clang_version: 16
+            runner: ubuntu-22.04
+          - clang_version: 17
+            runner: ubuntu-24.04
+          - clang_version: 18
+            runner: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
 
@@ -37,8 +45,7 @@ jobs:
             pkg-config \
             cmake \
             ninja-build \
-            linux-tools-common \
-            linux-tools-$(uname -r) || \
+            bpftool || \
           sudo apt-get install -y \
             clang-${{ matrix.clang_version }} \
             llvm-${{ matrix.clang_version }} \
@@ -47,6 +54,8 @@ jobs:
             cmake \
             ninja-build \
             linux-tools-common
+          # Ensure bpftool is available (fallback: install from linux-tools)
+          command -v bpftool >/dev/null 2>&1 || sudo apt-get install -y linux-tools-$(uname -r) 2>/dev/null || true
 
       - name: Check kernel BTF availability
         id: btf_check

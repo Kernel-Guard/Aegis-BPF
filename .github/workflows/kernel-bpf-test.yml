@@ -26,7 +26,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang llvm libbpf-dev libsystemd-dev pkg-config \
             cmake ninja-build python3-pip qemu-system-x86 linux-image-generic \
+            bpftool || \
+          sudo apt-get install -y clang llvm libbpf-dev libsystemd-dev pkg-config \
+            cmake ninja-build python3-pip qemu-system-x86 linux-image-generic \
             linux-tools-common
+          command -v bpftool >/dev/null 2>&1 || sudo apt-get install -y linux-tools-$(uname -r) 2>/dev/null || true
           sudo pip3 install virtme-ng || pip3 install --user virtme-ng
 
       - name: Check kernel BTF availability
