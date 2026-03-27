@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774609072647,
+  "lastUpdate": 1774631519711,
   "repoUrl": "https://github.com/ErenAri/Aegis-BPF",
   "entries": {
     "Benchmark": [
@@ -31602,6 +31602,102 @@ window.BENCHMARK_DATA = {
             "value": 53.754300510129525,
             "unit": "ns/iter",
             "extra": "iterations: 12\ncpu: 53.74913028590216 ns\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "erenari27@gmail.com",
+            "name": "Eren Arı",
+            "username": "ErenAri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8dcf254ca96f8cf796501bcc508ed4df0216fbc8",
+          "message": "Merge pull request #66 from ErenAri/fix/multiarch-bpftool-provider\n\n[codex] Fix Noble bpftool package in Docker build",
+          "timestamp": "2026-03-27T20:00:29+03:00",
+          "tree_id": "fe0665c312939c96b8164d1cc2634ff346875967",
+          "url": "https://github.com/ErenAri/Aegis-BPF/commit/8dcf254ca96f8cf796501bcc508ed4df0216fbc8"
+        },
+        "date": 1774631518851,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "BM_Sha256Long/64_mean",
+            "value": 1503.2947395449746,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1503.1662625941447 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/512_mean",
+            "value": 3651.1683540045137,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 3650.5026591178735 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/4096_mean",
+            "value": 20885.653105551453,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 20883.630551406513 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/32768_mean",
+            "value": 158504.56804220795,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 158491.1774919915 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/262144_mean",
+            "value": 1253815.533483478,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1253684.2409159155 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/1048576_mean",
+            "value": 5001685.931249974,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 5000741.337797608 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/100_mean",
+            "value": 4747.6089446101605,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 4753.836985681927 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/512_mean",
+            "value": 33426.01628058128,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 33428.56784715196 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/4096_mean",
+            "value": 275912.1561370788,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 275875.29491090233 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/10000_mean",
+            "value": 825134.735760369,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 825248.0108633894 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseIpv6Full_mean",
+            "value": 71.56471582707165,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 71.55892544543322 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseCidrV6_mean",
+            "value": 53.58988673452956,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 53.57897287849664 ns\nthreads: 1"
           }
         ]
       }
