@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774632828491,
+  "lastUpdate": 1774636291186,
   "repoUrl": "https://github.com/ErenAri/Aegis-BPF",
   "entries": {
     "Benchmark": [
@@ -31788,6 +31788,96 @@ window.BENCHMARK_DATA = {
             "value": 66.60039054464924,
             "unit": "ns/iter",
             "extra": "iterations: 12\ncpu: 66.59617359086401 ns\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "erenari27@gmail.com",
+            "name": "Eren Arı",
+            "username": "ErenAri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1bfd0169a16c43cdcb797cc32a1a0192b0aeef50",
+          "message": "Merge pull request #68 from ErenAri/fix/docker-upstream-bpftool\n\n[codex] Use upstream static bpftool in Docker build",
+          "timestamp": "2026-03-27T21:20:20+03:00",
+          "tree_id": "0b87bc27a2e6fa7a37f7ec054d227e6d1a82be00",
+          "url": "https://github.com/ErenAri/Aegis-BPF/commit/1bfd0169a16c43cdcb797cc32a1a0192b0aeef50"
+        },
+        "date": 1774636290339,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "BM_Sha256Long/64_mean",
+            "value": 1538.8542251864255,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1538.7660128628595 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/512_mean",
+            "value": 4342.851426686765,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 4342.634343407718 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/4096_mean",
+            "value": 26841.886463105348,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 26840.519643735734 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/32768_mean",
+            "value": 206759.55937438514,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 206733.73103711367 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/262144_mean",
+            "value": 1652057.51022012,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1651974.4233490524 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/1048576_mean",
+            "value": 6611949.1279904395,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 6611547.655502382 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/100_mean",
+            "value": 4012.902321912863,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 4021.410093725343 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/512_mean",
+            "value": 29745.38592211429,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 29738.157440121508 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/4096_mean",
+            "value": 241453.17300889557,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 241425.64268755107 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/10000_mean",
+            "value": 722435.5726527366,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 722519.4072353475 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseIpv6Full_mean",
+            "value": 66.30877275410212,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 66.30636952958052 ns\nthreads: 1"
           }
         ]
       }
