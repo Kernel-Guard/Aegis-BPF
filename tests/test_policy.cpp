@@ -20,7 +20,9 @@ class PolicyTest : public ::testing::Test {
   protected:
     void SetUp() override
     {
-        test_dir_ = std::filesystem::temp_directory_path() / "aegisbpf_test";
+        static uint64_t counter = 0;
+        test_dir_ = std::filesystem::temp_directory_path() /
+                    ("aegisbpf_test_" + std::to_string(getpid()) + "_" + std::to_string(counter++));
         std::filesystem::create_directories(test_dir_);
     }
 
@@ -95,7 +97,7 @@ cgid:1234567
     auto result = parse_policy_file(path, issues);
 
     EXPECT_TRUE(result);
-    EXPECT_EQ(result->allow_cgroup_ids.size(), 1u);
+    ASSERT_EQ(result->allow_cgroup_ids.size(), 1u);
     EXPECT_EQ(result->allow_cgroup_ids[0], 1234567u);
     EXPECT_EQ(result->allow_cgroup_paths.size(), 1u);
 }

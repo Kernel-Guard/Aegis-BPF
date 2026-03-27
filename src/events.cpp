@@ -163,7 +163,7 @@ namespace {
 /// Must be called before the closing '}' of the JSON object.
 void append_k8s_identity(std::ostringstream& oss, uint32_t pid)
 {
-    auto& cache = k8s_identity_cache();
+    const auto& cache = k8s_identity_cache();
     if (!cache.is_kubernetes())
         return;
 
