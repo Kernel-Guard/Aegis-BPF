@@ -161,12 +161,15 @@ void journal_send_control_change(const std::string& payload, const std::string& 
 namespace {
 /// Append Kubernetes identity fields to a JSON stream if running in K8s.
 /// Must be called before the closing '}' of the JSON object.
-void append_k8s_identity(std::ostringstream& oss, uint32_t pid) {
+void append_k8s_identity(std::ostringstream& oss, uint32_t pid)
+{
     auto& cache = k8s_identity_cache();
-    if (!cache.is_kubernetes()) return;
+    if (!cache.is_kubernetes())
+        return;
 
     std::string cid = parse_container_id_from_proc(pid);
-    if (cid.empty()) return;
+    if (cid.empty())
+        return;
 
     if (const auto* id = cache.lookup_by_container(cid)) {
         oss << ",\"k8s_pod\":\"" << json_escape(id->pod_name) << "\"";
@@ -439,8 +442,8 @@ void print_kernel_block_event(const KernelBlockEvent& ev)
 
     std::string event_type = "kernel_" + rule_type + "_block";
 
-    oss << "{\"type\":\"" << event_type << "\""
-        << ",\"pid\":" << ev.pid << ",\"ppid\":" << ev.ppid << ",\"start_time\":" << ev.start_time;
+    oss << "{\"type\":\"" << event_type << "\"" << ",\"pid\":" << ev.pid << ",\"ppid\":" << ev.ppid
+        << ",\"start_time\":" << ev.start_time;
     if (!exec_id.empty()) {
         oss << ",\"exec_id\":\"" << json_escape(exec_id) << "\"";
         oss << ",\"trace_id\":\"" << json_escape(exec_id) << "\"";
@@ -456,8 +459,7 @@ void print_kernel_block_event(const KernelBlockEvent& ev)
         oss << ",\"target_pid\":" << ev.target_pid;
     }
 
-    oss << ",\"rule_type\":\"" << json_escape(rule_type) << "\""
-        << ",\"action\":\"" << json_escape(action) << "\""
+    oss << ",\"rule_type\":\"" << json_escape(rule_type) << "\"" << ",\"action\":\"" << json_escape(action) << "\""
         << ",\"comm\":\"" << json_escape(comm) << "\"";
     append_k8s_identity(oss, ev.pid);
     oss << "}";

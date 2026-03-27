@@ -1,10 +1,11 @@
 #include "k8s_identity.hpp"
-#include "logging.hpp"
 
 #include <cstdlib>
 #include <fstream>
 #include <regex>
 #include <sstream>
+
+#include "logging.hpp"
 
 namespace aegis {
 
@@ -12,21 +13,26 @@ namespace {
 
 /// Simple JSON string value extractor — avoids pulling in a full JSON library.
 /// Finds "key": "value" and returns value.
-std::string extract_json_value(const std::string& json, const std::string& key) {
+std::string extract_json_value(const std::string& json, const std::string& key)
+{
     const std::string needle = "\"" + key + "\"";
     auto pos = json.find(needle);
-    if (pos == std::string::npos) return {};
+    if (pos == std::string::npos)
+        return {};
 
     // Find the colon after the key.
     pos = json.find(':', pos + needle.size());
-    if (pos == std::string::npos) return {};
+    if (pos == std::string::npos)
+        return {};
 
     // Find the opening quote of the value.
     pos = json.find('"', pos + 1);
-    if (pos == std::string::npos) return {};
+    if (pos == std::string::npos)
+        return {};
 
     auto end = json.find('"', pos + 1);
-    if (end == std::string::npos) return {};
+    if (end == std::string::npos)
+        return {};
 
     return json.substr(pos + 1, end - pos - 1);
 }
@@ -42,7 +48,8 @@ std::string extract_json_value(const std::string& json, const std::string& key) 
 ///   },
 ///   ...
 /// }
-std::unordered_map<std::string, K8sIdentity> parse_identity_json(const std::string& content) {
+std::unordered_map<std::string, K8sIdentity> parse_identity_json(const std::string& content)
+{
     std::unordered_map<std::string, K8sIdentity> result;
 
     // Find each top-level key (container ID) and its object value.
@@ -50,9 +57,11 @@ std::unordered_map<std::string, K8sIdentity> parse_identity_json(const std::stri
     while (pos < content.size()) {
         // Find next key.
         auto key_start = content.find('"', pos);
-        if (key_start == std::string::npos) break;
+        if (key_start == std::string::npos)
+            break;
         auto key_end = content.find('"', key_start + 1);
-        if (key_end == std::string::npos) break;
+        if (key_end == std::string::npos)
+            break;
 
         std::string container_id = content.substr(key_start + 1, key_end - key_start - 1);
 
@@ -64,9 +73,11 @@ std::unordered_map<std::string, K8sIdentity> parse_identity_json(const std::stri
 
         // Find the object body { ... }.
         auto obj_start = content.find('{', key_end);
-        if (obj_start == std::string::npos) break;
+        if (obj_start == std::string::npos)
+            break;
         auto obj_end = content.find('}', obj_start);
-        if (obj_end == std::string::npos) break;
+        if (obj_end == std::string::npos)
+            break;
 
         std::string obj = content.substr(obj_start, obj_end - obj_start + 1);
 
@@ -93,7 +104,8 @@ std::unordered_map<std::string, K8sIdentity> parse_identity_json(const std::stri
 
 } // namespace
 
-bool K8sIdentityCache::load_from_file(const std::string& path) {
+bool K8sIdentityCache::load_from_file(const std::string& path)
+{
     std::lock_guard<std::mutex> lock(mutex_);
     file_path_ = path;
 
@@ -124,7 +136,8 @@ bool K8sIdentityCache::load_from_file(const std::string& path) {
     return loaded_;
 }
 
-const K8sIdentity* K8sIdentityCache::lookup_by_container(const std::string& container_id) const {
+const K8sIdentity* K8sIdentityCache::lookup_by_container(const std::string& container_id) const
+{
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = cache_.find(container_id);
     if (it != cache_.end()) {
@@ -133,11 +146,14 @@ const K8sIdentity* K8sIdentityCache::lookup_by_container(const std::string& cont
     return nullptr;
 }
 
-bool K8sIdentityCache::reload() {
-    if (file_path_.empty()) return false;
+bool K8sIdentityCache::reload()
+{
+    if (file_path_.empty())
+        return false;
 
     std::ifstream file(file_path_);
-    if (!file.is_open()) return false;
+    if (!file.is_open())
+        return false;
 
     std::ostringstream ss;
     ss << file.rdbuf();
@@ -150,22 +166,26 @@ bool K8sIdentityCache::reload() {
     return loaded_;
 }
 
-size_t K8sIdentityCache::size() const {
+size_t K8sIdentityCache::size() const
+{
     std::lock_guard<std::mutex> lock(mutex_);
     return cache_.size();
 }
 
-bool K8sIdentityCache::is_kubernetes() const {
+bool K8sIdentityCache::is_kubernetes() const
+{
     std::lock_guard<std::mutex> lock(mutex_);
     return k8s_detected_;
 }
 
-std::string parse_container_id_from_proc(uint32_t pid) {
+std::string parse_container_id_from_proc(uint32_t pid)
+{
     // Read /proc/<pid>/cgroup and extract container ID.
     // Container IDs are 64-hex-character strings in cgroup paths.
     std::string path = "/proc/" + std::to_string(pid) + "/cgroup";
     std::ifstream file(path);
-    if (!file.is_open()) return {};
+    if (!file.is_open())
+        return {};
 
     // Match 64 hex chars (Docker/containerd container IDs).
     static const std::regex container_id_re("[0-9a-f]{64}");
@@ -181,7 +201,8 @@ std::string parse_container_id_from_proc(uint32_t pid) {
     return {};
 }
 
-K8sIdentityCache& k8s_identity_cache() {
+K8sIdentityCache& k8s_identity_cache()
+{
     static K8sIdentityCache instance;
     return instance;
 }

@@ -223,8 +223,8 @@ struct KernelBlockEvent {
     char comm[16];
     uint32_t target_pid; /* target PID for ptrace, 0 otherwise */
     uint32_t _pad;
-    char action[8];      /* "AUDIT", "TERM", "KILL", or "BLOCK" */
-    char rule_type[16];  /* "ptrace", "module", "bpf" */
+    char action[8];     /* "AUDIT", "TERM", "KILL", or "BLOCK" */
+    char rule_type[16]; /* "ptrace", "module", "bpf" */
 };
 
 struct Event {
@@ -376,9 +376,9 @@ struct AgentConfig {
     uint32_t event_sample_rate;
     uint32_t sigkill_escalation_threshold;      /* SIGKILL after N denies in window */
     uint32_t sigkill_escalation_window_seconds; /* Escalation window size */
-    uint8_t deny_ptrace;       /* block ptrace attachment (MITRE T1055.008) */
-    uint8_t deny_module_load;  /* block kernel module loading (MITRE T1547.006) */
-    uint8_t deny_bpf;          /* block unauthorized BPF program load (MITRE T1562) */
+    uint8_t deny_ptrace;                        /* block ptrace attachment (MITRE T1055.008) */
+    uint8_t deny_module_load;                   /* block kernel module loading (MITRE T1547.006) */
+    uint8_t deny_bpf;                           /* block unauthorized BPF program load (MITRE T1562) */
     uint8_t _pad_kernel;
 };
 
@@ -423,9 +423,9 @@ struct Policy {
     std::vector<std::string> allow_binary_hashes; // sha256:... entries (v3+)
     std::vector<std::string> scan_paths;          // Extra paths for binary hash scan (v3+)
     // Kernel security hooks (MITRE ATT&CK coverage)
-    bool deny_ptrace = false;       // block ptrace (T1055.008)
-    bool deny_module_load = false;  // block kernel module loading (T1547.006)
-    bool deny_bpf = false;          // block unauthorized BPF program loading (T1562)
+    bool deny_ptrace = false;      // block ptrace (T1055.008)
+    bool deny_module_load = false; // block kernel module loading (T1547.006)
+    bool deny_bpf = false;         // block unauthorized BPF program loading (T1562)
 };
 
 struct PolicyIssues {

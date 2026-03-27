@@ -484,20 +484,34 @@ int cmd_metrics(const std::string& out_path, bool detailed)
                 // Map hook IDs to human-readable names
                 auto hook_name = [](uint32_t id) -> std::string {
                     switch (id) {
-                        case 0: return "file_open";
-                        case 1: return "inode_permission";
-                        case 2: return "bprm_check";
-                        case 3: return "file_mmap";
-                        case 4: return "socket_connect";
-                        case 5: return "socket_bind";
-                        case 6: return "socket_listen";
-                        case 7: return "socket_accept";
-                        case 8: return "socket_sendmsg";
-                        case 9: return "execve";
-                        case 10: return "ptrace";
-                        case 11: return "module_load";
-                        case 12: return "bpf";
-                        default: return "hook_" + std::to_string(id);
+                        case 0:
+                            return "file_open";
+                        case 1:
+                            return "inode_permission";
+                        case 2:
+                            return "bprm_check";
+                        case 3:
+                            return "file_mmap";
+                        case 4:
+                            return "socket_connect";
+                        case 5:
+                            return "socket_bind";
+                        case 6:
+                            return "socket_listen";
+                        case 7:
+                            return "socket_accept";
+                        case 8:
+                            return "socket_sendmsg";
+                        case 9:
+                            return "execve";
+                        case 10:
+                            return "ptrace";
+                        case 11:
+                            return "module_load";
+                        case 12:
+                            return "bpf";
+                        default:
+                            return "hook_" + std::to_string(id);
                     }
                 };
                 append_metric_header(oss, "aegisbpf_hook_latency_total_ns", "counter",
@@ -506,8 +520,7 @@ int cmd_metrics(const std::string& out_path, bool detailed)
                     append_metric_sample(oss, "aegisbpf_hook_latency_total_ns", {{"hook", hook_name(id)}},
                                          entry.total_ns);
                 }
-                append_metric_header(oss, "aegisbpf_hook_invocations_total", "counter",
-                                     "Total hook invocation count");
+                append_metric_header(oss, "aegisbpf_hook_invocations_total", "counter", "Total hook invocation count");
                 for (const auto& [id, entry] : entries) {
                     append_metric_sample(oss, "aegisbpf_hook_invocations_total", {{"hook", hook_name(id)}},
                                          entry.count);
@@ -515,8 +528,7 @@ int cmd_metrics(const std::string& out_path, bool detailed)
                 append_metric_header(oss, "aegisbpf_hook_latency_max_ns", "gauge",
                                      "Maximum single hook invocation latency in nanoseconds");
                 for (const auto& [id, entry] : entries) {
-                    append_metric_sample(oss, "aegisbpf_hook_latency_max_ns", {{"hook", hook_name(id)}},
-                                         entry.max_ns);
+                    append_metric_sample(oss, "aegisbpf_hook_latency_max_ns", {{"hook", hook_name(id)}}, entry.max_ns);
                 }
             }
         }

@@ -461,33 +461,29 @@ void detect_policy_conflicts(const Policy& policy, PolicyIssues& issues)
 
     // Check for overlapping network deny rules: IP that also appears in a CIDR range is redundant
     if (policy.network.enabled && !policy.network.deny_ips.empty() && !policy.network.deny_cidrs.empty()) {
-        issues.warnings.push_back(
-            "advisory: policy has both IP and CIDR deny rules. Verify that individual IPs "
-            "are not already covered by CIDR ranges (redundant rules waste map capacity).");
+        issues.warnings.push_back("advisory: policy has both IP and CIDR deny rules. Verify that individual IPs "
+                                  "are not already covered by CIDR ranges (redundant rules waste map capacity).");
     }
 
     // Warn if deny_bpf is enabled without deny_module_load (partial kernel protection)
     if (policy.deny_bpf && !policy.deny_module_load) {
-        issues.warnings.push_back(
-            "advisory: [deny_bpf] is enabled but [deny_module_load] is not. "
-            "Kernel module loading remains unrestricted, which may allow "
-            "alternative attack paths (T1547.006).");
+        issues.warnings.push_back("advisory: [deny_bpf] is enabled but [deny_module_load] is not. "
+                                  "Kernel module loading remains unrestricted, which may allow "
+                                  "alternative attack paths (T1547.006).");
     }
 
     // Warn if kernel security hooks are enabled but no file deny rules exist
     if ((policy.deny_ptrace || policy.deny_module_load || policy.deny_bpf) && policy.deny_paths.empty() &&
         policy.deny_inodes.empty()) {
-        issues.warnings.push_back(
-            "advisory: kernel security hooks are enabled but no file deny rules are configured. "
-            "Consider adding [deny_path] or [deny_inode] sections for file access control.");
+        issues.warnings.push_back("advisory: kernel security hooks are enabled but no file deny rules are configured. "
+                                  "Consider adding [deny_path] or [deny_inode] sections for file access control.");
     }
 
     // Warn about protect features without exec identity allowlist
     if ((policy.protect_connect || !policy.protect_paths.empty()) && policy.allow_binary_hashes.empty() &&
         policy.deny_binary_hashes.empty()) {
-        issues.warnings.push_back(
-            "advisory: [protect_path] or [protect_connect] is enabled but no binary hash "
-            "allowlist is configured. Exec identity will have no basis for trust decisions.");
+        issues.warnings.push_back("advisory: [protect_path] or [protect_connect] is enabled but no binary hash "
+                                  "allowlist is configured. Exec identity will have no basis for trust decisions.");
     }
 }
 

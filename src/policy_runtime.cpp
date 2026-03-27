@@ -734,11 +734,12 @@ Result<void> apply_policy_internal_impl_fn(const std::string& path, const std::s
     // Set kernel security flags (MITRE ATT&CK hooks)
     if (policy.deny_ptrace || policy.deny_module_load || policy.deny_bpf) {
         ScopedSpan span("policy.set_kernel_security_flags", root_span.trace_id(), root_span.span_id());
-        auto ksec_result = set_kernel_security_flags(state, policy.deny_ptrace, policy.deny_module_load, policy.deny_bpf);
+        auto ksec_result =
+            set_kernel_security_flags(state, policy.deny_ptrace, policy.deny_module_load, policy.deny_bpf);
         if (!ksec_result) {
             span.fail(ksec_result.error().to_string());
-            logger().log(SLOG_WARN("Failed to set kernel security flags")
-                             .field("error", ksec_result.error().to_string()));
+            logger().log(
+                SLOG_WARN("Failed to set kernel security flags").field("error", ksec_result.error().to_string()));
         } else {
             logger().log(SLOG_INFO("Kernel security flags updated")
                              .field("deny_ptrace", policy.deny_ptrace)

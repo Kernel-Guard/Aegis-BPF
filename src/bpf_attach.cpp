@@ -217,16 +217,14 @@ Result<void> attach_all(BpfState& state, bool lsm_enabled, bool use_inode_permis
         (void)span;
 
         bpf_program* ptrace_prog = bpf_object__find_program_by_name(state.obj, "handle_ptrace_access_check");
-        attach_optional_program(state, ptrace_prog, state.ptrace_hook_attached,
-                                "Optional ptrace hook attach failed");
+        attach_optional_program(state, ptrace_prog, state.ptrace_hook_attached, "Optional ptrace hook attach failed");
 
         bpf_program* module_prog = bpf_object__find_program_by_name(state.obj, "handle_locked_down");
         attach_optional_program(state, module_prog, state.module_load_hook_attached,
                                 "Optional module load hook attach failed");
 
         bpf_program* bpf_prog = bpf_object__find_program_by_name(state.obj, "handle_bpf");
-        attach_optional_program(state, bpf_prog, state.bpf_hook_attached,
-                                "Optional BPF hook attach failed");
+        attach_optional_program(state, bpf_prog, state.bpf_hook_attached, "Optional BPF hook attach failed");
     }
 
     state.attach_contract_valid = true;

@@ -173,10 +173,14 @@ jobs:
       - name: Run tests under QEMU
         run: |
           echo "=== Running ARM64 tests under QEMU ==="
+          # Exclude tests that invoke the binary via Python subprocess
+          # (subprocess doesn't use CMAKE_CROSSCOMPILING_EMULATOR, so
+          # the ARM64 binary can't exec on the x86_64 host directly).
           ctest --test-dir build-arm64-test \
             --output-on-failure \
             --timeout 300 \
             --no-tests=error \
+            --exclude-regex "upgrade_compat" \
             -j2
         env:
           QEMU_LD_PREFIX: /usr/aarch64-linux-gnu

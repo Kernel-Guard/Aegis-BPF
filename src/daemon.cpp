@@ -430,8 +430,8 @@ int daemon_run(bool audit_only, bool enable_seccomp, uint32_t deadman_ttl, uint8
         static constexpr const char* kIdentityCachePath = "/etc/aegisbpf/k8s-identity-cache.json";
         auto& id_cache = k8s_identity_cache();
         if (id_cache.load_from_file(kIdentityCachePath)) {
-            logger().log(SLOG_INFO("Kubernetes identity cache loaded")
-                             .field("entries", static_cast<int64_t>(id_cache.size())));
+            logger().log(
+                SLOG_INFO("Kubernetes identity cache loaded").field("entries", static_cast<int64_t>(id_cache.size())));
         } else if (id_cache.is_kubernetes()) {
             logger().log(SLOG_WARN("Kubernetes environment detected but identity cache not loaded")
                              .field("path", kIdentityCachePath));
@@ -833,10 +833,9 @@ int daemon_run(bool audit_only, bool enable_seccomp, uint32_t deadman_ttl, uint8
                                      .field("new_drops", static_cast<int64_t>(new_priority_drops))
                                      .field("total_drops", static_cast<int64_t>(bp.priority_drops))
                                      .field("total_events", static_cast<int64_t>(bp.seq_total)));
-                    emit_runtime_state_change(
-                        RuntimeState::Degraded, "PRIORITY_RINGBUF_DROPS",
-                        "priority_drops=" + std::to_string(bp.priority_drops) +
-                            " total_events=" + std::to_string(bp.seq_total));
+                    emit_runtime_state_change(RuntimeState::Degraded, "PRIORITY_RINGBUF_DROPS",
+                                              "priority_drops=" + std::to_string(bp.priority_drops) +
+                                                  " total_events=" + std::to_string(bp.seq_total));
                 }
                 if (new_telemetry_drops > 0) {
                     logger().log(SLOG_WARN("Telemetry ring buffer drops detected")
