@@ -261,6 +261,7 @@ set(AEGIS_SOURCES
     src/binary_hash.cpp
     src/rule_engine.cpp
     src/plugin.cpp
+    src/k8s_identity.cpp
 )
 
 set(AEGIS_HEADERS
@@ -316,6 +317,7 @@ set(AEGIS_HEADERS
     src/binary_hash.hpp
     src/rule_engine.hpp
     src/plugin.hpp
+    src/k8s_identity.hpp
 )
 
 # Build main executable
@@ -401,6 +403,7 @@ set(AEGIS_LIB_SOURCES
     src/binary_hash.cpp
     src/rule_engine.cpp
     src/plugin.cpp
+    src/k8s_identity.cpp
 )
 
 add_library(aegisbpf_lib STATIC ${AEGIS_LIB_SOURCES} ${AEGIS_HEADERS})

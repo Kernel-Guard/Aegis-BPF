@@ -1,5 +1,12 @@
 # AegisBPF
 
+[![CI](https://github.com/ErenAri/Aegis-BPF/actions/workflows/ci.yml/badge.svg)](https://github.com/ErenAri/Aegis-BPF/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-240%2B%20passing-brightgreen)]()
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)]()
+[![Architecture](https://img.shields.io/badge/arch-x86__64%20%7C%20ARM64-informational)]()
+[![Kernel](https://img.shields.io/badge/kernel-5.15%2B-orange)]()
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue)]()
+
 **AegisBPF** is an eBPF-based runtime security agent that monitors and blocks unauthorized file and network activity using Linux Security Modules (LSM). It provides kernel-level enforcement for file deny rules plus outbound and selected inbound network deny surfaces, with an explicit audit-only fallback when enforce-capable hooks are unavailable.
 
 ```
@@ -59,6 +66,23 @@
 - **Binary hash verification** - Integrity checks for allow-listed binaries
 - **Hot-loadable detection rules** - JSON-based rule engine with comm/path matching and hot-reload
 - **Plugin/extension system** - Virtual event handler interface for custom processing pipelines
+
+## Comparison with Other Tools
+
+| Capability | AegisBPF | Falco | Tetragon | Tracee |
+|-----------|----------|-------|----------|--------|
+| **File enforcement** | ✅ Kernel deny | ❌ Detect only | ✅ Kernel deny | ⚠️ Limited |
+| **Network enforcement** | ✅ Socket hooks | ❌ Detect only | ✅ Socket hooks | ⚠️ Limited |
+| **File open overhead** | 0.1–0.5 µs | 2–5 µs | 0.5–2 µs | 3–8 µs |
+| **Memory (idle)** | ~15 MB | ~85 MB | ~45 MB | ~120 MB |
+| **Policy reload** | <50ms (atomic) | 1–5s | 2–10s | 1–5s |
+| **Ptrace/module/BPF blocking** | ✅ All three | ❌ | ✅ Partial | ❌ |
+| **Policy language** | Declarative INI | YAML rules | K8s CRDs | Rego |
+| **Compliance mappings** | ✅ NIST, CIS, ISO, SOC2, PCI | ⚠️ Basic | ❌ | ❌ |
+| **Break-glass mechanism** | ✅ Emergency toggle | ❌ | ❌ | ❌ |
+| **SIEM integration** | ✅ Splunk, Elastic, OTLP | ✅ Falcosidekick | ⚠️ JSON | ⚠️ JSON |
+
+See [docs/PERFORMANCE_COMPARISON.md](docs/PERFORMANCE_COMPARISON.md) for detailed benchmarks and methodology.
 
 ## Claim Taxonomy
 
@@ -138,6 +162,29 @@ Public proof lives in the docs and CI artifacts:
 - Edge-case compliance results: `docs/EDGE_CASE_COMPLIANCE_RESULTS.md`
 - External validation status: `docs/EXTERNAL_VALIDATION.md`
 - Performance baseline report: `docs/PERF_BASELINE.md`
+- Performance comparison: `docs/PERFORMANCE_COMPARISON.md`
+- Architecture support matrix: `docs/ARCHITECTURE_SUPPORT.md`
+- BPF map schema reference: `docs/BPF_MAP_SCHEMA.md`
+
+**Compliance Frameworks:**
+- NIST SP 800-53 Rev. 5: `docs/compliance/NIST_800_53_MAPPING.md`
+- ISO/IEC 27001:2022: `docs/compliance/ISO_27001_CONTROLS.md`
+- SOC 2 Type II evidence kit: `docs/compliance/SOC2_EVIDENCE_KIT.md`
+- PCI DSS 4.0: `docs/compliance/PCI_DSS_4_MAPPING.md`
+- CIS Kubernetes Benchmark v1.8: `docs/compliance/CIS_KUBERNETES_BENCHMARK.md`
+
+**Integrations:**
+- Grafana dashboards (4): `grafana/dashboards/`
+- Prometheus alerting rules: `examples/prometheus-alerts.yml`
+- Splunk HEC forwarder: `integrations/siem/splunk-hec-forwarder.py`
+- Elastic ECS formatter: `integrations/siem/elastic-ecs-formatter.py`
+- OpenTelemetry OTLP exporter: `integrations/opentelemetry/`
+
+**Tutorials:**
+- [Block your first file](tutorials/01-block-first-file.md)
+- [Network policy enforcement](tutorials/02-network-policy.md)
+- [Writing custom policies](tutorials/03-custom-policies.md)
+- [Debugging policy denials](tutorials/04-debugging-denials.md)
 
 Kernel-matrix artifacts are uploaded by `.github/workflows/kernel-matrix.yml`
 as `kernel-matrix-<runner>` (kernel + distro + test logs).
