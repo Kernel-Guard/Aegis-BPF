@@ -11,14 +11,16 @@ FROM ubuntu:24.04 AS builder
 ARG STATIC_LIBBPF=ON
 
 # Install build dependencies
-# Ubuntu 24.04 exposes bpftool via linux-tools-common rather than a concrete
-# bpftool package, so install the provider directly.
+# Ubuntu 24.04 exposes bpftool through linux-tools wrappers. Install both the
+# common package and the exact host-kernel tools package so /usr/sbin/bpftool
+# resolves to a real binary during Docker builds on GitHub runners.
 # When STATIC_LIBBPF=ON, libelf-dev is needed (libbpf builds from source)
 # When STATIC_LIBBPF=OFF, libbpf-dev provides the shared library
 RUN apt-get update && apt-get install -y --no-install-recommends \
     clang \
     llvm \
     linux-tools-common \
+    linux-tools-$(uname -r) \
     libbpf-dev \
     libelf-dev \
     libsystemd-dev \
