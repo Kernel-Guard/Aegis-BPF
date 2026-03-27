@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774523370332,
+  "lastUpdate": 1774607929586,
   "repoUrl": "https://github.com/ErenAri/Aegis-BPF",
   "entries": {
     "Benchmark": [
@@ -31410,6 +31410,102 @@ window.BENCHMARK_DATA = {
             "value": 54.12782952042462,
             "unit": "ns/iter",
             "extra": "iterations: 12\ncpu: 54.12346333640724 ns\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "erenari27@gmail.com",
+            "name": "Eren Arı",
+            "username": "ErenAri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2cd8ca396053f7b21e95924275af9b75f126dbe5",
+          "message": "Merge pull request #64 from ErenAri/claude/quirky-aryabhata\n\nfeat: Kubernetes CRD operator and pod identity enrichment",
+          "timestamp": "2026-03-27T13:27:21+03:00",
+          "tree_id": "5cde83b67faa76cf34e215f6a26604c5b396c448",
+          "url": "https://github.com/ErenAri/Aegis-BPF/commit/2cd8ca396053f7b21e95924275af9b75f126dbe5"
+        },
+        "date": 1774607929042,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "BM_Sha256Long/64_mean",
+            "value": 1495.2382815908386,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1495.0750082714621 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/512_mean",
+            "value": 3625.352299926408,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 3624.580152295624 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/4096_mean",
+            "value": 20724.202995024676,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 20721.66086916859 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/32768_mean",
+            "value": 157132.124822058,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 157115.44443507868 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/262144_mean",
+            "value": 1246823.3647784733,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1246680.2567647945 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/1048576_mean",
+            "value": 4989404.568801894,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 4988315.465895612 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/100_mean",
+            "value": 5185.2349079866,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 5184.874217052874 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/512_mean",
+            "value": 33767.52774562663,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 33774.59114958584 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/4096_mean",
+            "value": 274683.76469152473,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 274633.7393868545 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/10000_mean",
+            "value": 821142.9543765349,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 821212.176485096 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseIpv6Full_mean",
+            "value": 72.45714590913178,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 72.44967420437308 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseCidrV6_mean",
+            "value": 53.64979077828224,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 53.63870254110629 ns\nthreads: 1"
           }
         ]
       }
