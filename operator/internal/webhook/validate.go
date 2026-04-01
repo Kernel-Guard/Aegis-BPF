@@ -25,12 +25,26 @@ func NewPolicyValidator(decoder admission.Decoder) *PolicyValidator {
 
 // Handle validates the admission request.
 func (v *PolicyValidator) Handle(ctx context.Context, req admission.Request) admission.Response {
-	policy := &v1alpha1.AegisPolicy{}
-	if err := v.decoder.Decode(req, policy); err != nil {
-		return admission.Errored(http.StatusBadRequest, err)
+	var spec v1alpha1.AegisPolicySpec
+
+	switch req.Kind.Kind {
+	case "AegisPolicy":
+		policy := &v1alpha1.AegisPolicy{}
+		if err := v.decoder.Decode(req, policy); err != nil {
+			return admission.Errored(http.StatusBadRequest, err)
+		}
+		spec = policy.Spec
+	case "AegisClusterPolicy":
+		clusterPolicy := &v1alpha1.AegisClusterPolicy{}
+		if err := v.decoder.Decode(req, clusterPolicy); err != nil {
+			return admission.Errored(http.StatusBadRequest, err)
+		}
+		spec = clusterPolicy.Spec
+	default:
+		return admission.Errored(http.StatusBadRequest, fmt.Errorf("unsupported kind %q", req.Kind.Kind))
 	}
 
-	if errs := validateSpec(policy.Spec); len(errs) > 0 {
+	if errs := validateSpec(spec); len(errs) > 0 {
 		return admission.Denied(strings.Join(errs, "; "))
 	}
 
