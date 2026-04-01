@@ -73,6 +73,8 @@ inline constexpr uint8_t kExecIdentityFlagAllowlistEnforce = 1u << 0;
 inline constexpr uint8_t kExecIdentityFlagProtectConnect = 1u << 1;
 inline constexpr uint8_t kExecIdentityFlagProtectFiles = 1u << 2;
 inline constexpr uint8_t kExecIdentityFlagTrustRuntimeDeps = 1u << 3;
+inline constexpr uint8_t kExecIdentityFlagAllowOverlayfs = 1u << 4;
+inline constexpr uint8_t kExecIdentityFlagSkipVerity = 1u << 5;
 
 enum EventType : uint32_t {
     EVENT_EXEC = 1,
@@ -264,6 +266,7 @@ struct AgentConfig {
     uint32_t event_sample_rate;
     uint32_t sigkill_escalation_threshold;      /* SIGKILL after N denies in window */
     uint32_t sigkill_escalation_window_seconds; /* Escalation window size */
+    uint64_t policy_generation;                 /* monotonic generation after atomic policy commit */
 };
 
 struct AgentMeta {
@@ -326,7 +329,7 @@ static_assert(sizeof(BlockEvent) == 336, "BlockEvent size changed — update BPF
 static_assert(sizeof(NetBlockEvent) == 104, "NetBlockEvent size changed — update BPF struct");
 static_assert(sizeof(InodeId) == 16, "InodeId size changed — update BPF struct");
 static_assert(sizeof(PathKey) == 256, "PathKey size changed — update BPF struct");
-static_assert(sizeof(AgentConfig) == 32, "AgentConfig size changed — update BPF struct");
+static_assert(sizeof(AgentConfig) == 40, "AgentConfig size changed — update BPF struct");
 static_assert(sizeof(AgentMeta) == 4, "AgentMeta size changed — update BPF struct");
 static_assert(sizeof(BlockStats) == 16, "BlockStats size changed — update BPF struct");
 static_assert(sizeof(PortKey) == 4, "PortKey size changed — update BPF struct");

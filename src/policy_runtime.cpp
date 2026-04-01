@@ -7,6 +7,7 @@
 #include <unordered_set>
 
 #include "binary_scan.hpp"
+#include "bpf_config.hpp"
 #include "bpf_ops.hpp"
 #include "logging.hpp"
 #include "network_ops.hpp"
@@ -232,6 +233,21 @@ Result<void> apply_policy_internal_impl_fn(const std::string& path, const std::s
     }
 
     size_t expected_allow_exec_inode_entries = 0;
+
+    // Bump policy generation before sync — forces BPF hooks into audit mode
+    // during the transition window until we commit the matching generation.
+    uint64_t pending_generation = 0;
+    {
+        auto gen_result = bump_policy_generation(state);
+        if (gen_result) {
+            pending_generation = *gen_result;
+            logger().log(SLOG_INFO("Policy generation bumped; hooks in audit-mode during sync")
+                             .field("generation", static_cast<int64_t>(pending_generation)));
+        } else {
+            logger().log(SLOG_WARN("Failed to bump policy generation; sync proceeds without atomic guard")
+                             .field("error", gen_result.error().to_string()));
+        }
+    }
 
     bool use_shadow = false;
     ShadowMapSet shadows;
@@ -681,6 +697,19 @@ Result<void> apply_policy_internal_impl_fn(const std::string& path, const std::s
                     return fail(v.error());
                 }
             }
+        }
+    }
+
+    // Commit the policy generation to the BPF map — hooks will now see
+    // committed == expected and resume enforce-mode.
+    if (pending_generation > 0) {
+        auto commit_result = commit_policy_generation(state, pending_generation);
+        if (!commit_result) {
+            logger().log(SLOG_WARN("Failed to commit policy generation; hooks remain in audit-mode")
+                             .field("error", commit_result.error().to_string()));
+        } else {
+            logger().log(SLOG_INFO("Policy generation committed; enforcement resumed")
+                             .field("generation", static_cast<int64_t>(pending_generation)));
         }
     }
 

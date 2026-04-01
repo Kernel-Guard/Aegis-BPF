@@ -18,6 +18,7 @@
 #include <numeric>
 #include <set>
 
+#include "bpf_attach.hpp"
 #include "bpf_integrity.hpp"
 #include "kernel_features.hpp"
 #include "logging.hpp"
@@ -137,23 +138,6 @@ void BpfState::cleanup()
     cleanup_bpf(*this);
 }
 
-static Result<void> attach_prog(bpf_program* prog, BpfState& state)
-{
-    const char* sec = bpf_program__section_name(prog);
-    const bool is_lsm = sec && (std::strncmp(sec, "lsm/", 4) == 0 || std::strncmp(sec, "lsm.s/", 6) == 0);
-
-    bpf_link* link = is_lsm ? bpf_program__attach_lsm(prog) : bpf_program__attach(prog);
-    int err = libbpf_get_error(link);
-    if (err || !link) {
-        if (err == 0) {
-            err = -EINVAL;
-        }
-        return Error::bpf_error(err, "Failed to attach BPF program");
-    }
-    state.links.push_back(link);
-    return {};
-}
-
 void set_ringbuf_bytes(uint32_t bytes)
 {
     g_ringbuf_bytes.store(bytes, std::memory_order_relaxed);
@@ -253,6 +237,7 @@ Result<void> load_bpf(bool reuse_pins, bool attach_links, BpfState& state)
             state.config_map = bpf_object__find_map_by_name(state.obj, ".bss");
         }
         state.survival_allowlist = bpf_object__find_map_by_name(state.obj, "survival_allowlist");
+        state.policy_generation_map = bpf_object__find_map_by_name(state.obj, "policy_generation");
 
         // Network maps (optional)
         state.deny_ipv4 = bpf_object__find_map_by_name(state.obj, "deny_ipv4");

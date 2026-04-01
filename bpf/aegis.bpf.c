@@ -42,6 +42,8 @@
 #define EXEC_IDENTITY_FLAG_PROTECT_CONNECT (1U << 1)
 #define EXEC_IDENTITY_FLAG_PROTECT_FILES (1U << 2)
 #define EXEC_IDENTITY_FLAG_TRUST_RUNTIME_DEPS (1U << 3)
+#define EXEC_IDENTITY_FLAG_ALLOW_OVERLAYFS (1U << 4)  /* treat overlayfs as verifiable (containers) */
+#define EXEC_IDENTITY_FLAG_SKIP_VERITY (1U << 5)      /* don't require FS_VERITY_FL (dev/testing) */
 
 #ifndef FS_VERITY_FL
 #define FS_VERITY_FL 0x00100000
@@ -182,6 +184,7 @@ struct agent_config {
     __u32 event_sample_rate;
     __u32 sigkill_escalation_threshold;  /* SIGKILL after N denies in window */
     __u32 sigkill_escalation_window_seconds;  /* Escalation window size */
+    __u64 policy_generation;  /* monotonic generation stamped after atomic policy commit */
 };
 
 /* Agent config is stored as a BPF global so programs can read it without a
@@ -202,6 +205,7 @@ volatile struct agent_config agent_cfg = {
     .event_sample_rate = 1,
     .sigkill_escalation_threshold = SIGKILL_ESCALATION_THRESHOLD_DEFAULT,
     .sigkill_escalation_window_seconds = 30,
+    .policy_generation = 0,
 };
 
 struct agent_meta {
@@ -461,6 +465,17 @@ struct {
     __type(value, struct signal_escalation_state);
 } enforce_signal_state SEC(".maps");
 
+/* Policy generation: single-entry array used as an atomic commit marker.
+ * Userspace bumps agent_cfg.policy_generation (forcing audit during sync),
+ * then writes the matching value here after all maps are synchronized.
+ * Hooks compare the two; a mismatch means maps are mid-update → audit. */
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, 1);
+    __type(key, __u32);
+    __type(value, __u64);
+} policy_generation SEC(".maps");
+
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
@@ -589,12 +604,16 @@ static __always_inline __u8 file_is_verified_exec_identity(const struct file *fi
     if (!file)
         return 0;
 
+    const volatile struct agent_config *cfg = &agent_cfg;
+    __u8 flags = cfg->exec_identity_flags;
+
     const struct inode *inode = BPF_CORE_READ(file, f_inode);
     if (!inode)
         return 0;
 
     __u32 magic = BPF_CORE_READ(inode, i_sb, s_magic);
-    if (magic == OVERLAYFS_SUPER_MAGIC)
+    if (magic == OVERLAYFS_SUPER_MAGIC &&
+        !(flags & EXEC_IDENTITY_FLAG_ALLOW_OVERLAYFS))
         return 0;
 
     __u32 uid = BPF_CORE_READ(inode, i_uid.val);
@@ -605,9 +624,11 @@ static __always_inline __u8 file_is_verified_exec_identity(const struct file *fi
     if (mode & (S_IWGRP | S_IWOTH))
         return 0;
 
-    __u32 iflags = BPF_CORE_READ(inode, i_flags);
-    if (!(iflags & FS_VERITY_FL))
-        return 0;
+    if (!(flags & EXEC_IDENTITY_FLAG_SKIP_VERITY)) {
+        __u32 iflags = BPF_CORE_READ(inode, i_flags);
+        if (!(iflags & FS_VERITY_FL))
+            return 0;
+    }
 
     char path[128] = {};
     long len = bpf_d_path((struct path *)&file->f_path, path, sizeof(path));
@@ -615,6 +636,22 @@ static __always_inline __u8 file_is_verified_exec_identity(const struct file *fi
         return 0;
 
     return path_is_trusted_root(path);
+}
+
+/* Return 1 when the live policy maps match the expected generation.
+ * During a shadow→live sync, userspace bumps agent_cfg.policy_generation
+ * before copying maps, so committed != expected → audit-only until commit. */
+static __always_inline __u8 is_policy_consistent(void)
+{
+    const volatile struct agent_config *cfg = &agent_cfg;
+    __u64 expected = cfg->policy_generation;
+    if (expected == 0)
+        return 1;  /* generation 0 means feature not yet activated */
+    __u32 key = 0;
+    __u64 *committed = bpf_map_lookup_elem(&policy_generation, &key);
+    if (!committed)
+        return 1;  /* map not populated yet — don't force audit */
+    return *committed == expected;
 }
 
 static __always_inline __u8 get_effective_audit_mode(void)
@@ -639,6 +676,11 @@ static __always_inline __u8 get_effective_audit_mode(void)
         if (now > cfg->deadman_deadline_ns)
             return 1;  /* Deadline passed - failsafe to audit */
     }
+
+    /* Policy generation mismatch: maps are mid-update — force audit to
+     * avoid enforcing a partially-synced ruleset. */
+    if (!is_policy_consistent())
+        return 1;
 
     return 0;  /* Enforce mode */
 }
@@ -1603,7 +1645,9 @@ int BPF_PROG(handle_socket_connect, struct socket *sock,
 
     __u16 family = 0;
     if (bpf_probe_read_kernel(&family, sizeof(family), &address->sa_family))
-        return enforcement_result();
+        /* Fail-open on parse error: never deny a syscall because we
+         * couldn't read the sockaddr.  Matches file-hook behavior. */
+        return 0;
 
     if (family != AF_INET && family != AF_INET6)
         return 0;
@@ -1614,13 +1658,13 @@ int BPF_PROG(handle_socket_connect, struct socket *sock,
     if (family == AF_INET) {
         struct sockaddr_in sin = {};
         if (bpf_probe_read_kernel(&sin, sizeof(sin), address))
-            return enforcement_result();
+            return 0;  /* fail-open on parse error */
         remote_ip_v4 = sin.sin_addr.s_addr;
         remote_port = bpf_ntohs(sin.sin_port);
     } else {
         struct sockaddr_in6 sin6 = {};
         if (bpf_probe_read_kernel(&sin6, sizeof(sin6), address))
-            return enforcement_result();
+            return 0;  /* fail-open on parse error */
         remote_port = bpf_ntohs(sin6.sin6_port);
         __builtin_memcpy(remote_ip_v6.addr, &sin6.sin6_addr, sizeof(remote_ip_v6.addr));
     }
@@ -1826,7 +1870,9 @@ int BPF_PROG(handle_socket_bind, struct socket *sock,
 
     __u16 family = 0;
     if (bpf_probe_read_kernel(&family, sizeof(family), &address->sa_family))
-        return enforcement_result();
+        /* Fail-open on parse error: never deny a syscall because we
+         * couldn't read the sockaddr.  Matches file-hook behavior. */
+        return 0;
 
     if (family != AF_INET && family != AF_INET6)
         return 0;
@@ -1836,12 +1882,12 @@ int BPF_PROG(handle_socket_bind, struct socket *sock,
     if (family == AF_INET) {
         struct sockaddr_in sin = {};
         if (bpf_probe_read_kernel(&sin, sizeof(sin), address))
-            return enforcement_result();
+            return 0;  /* fail-open on parse error */
         bind_port = bpf_ntohs(sin.sin_port);
     } else {
         struct sockaddr_in6 sin6 = {};
         if (bpf_probe_read_kernel(&sin6, sizeof(sin6), address))
-            return enforcement_result();
+            return 0;  /* fail-open on parse error */
         bind_port = bpf_ntohs(sin6.sin6_port);
     }
 
@@ -2292,14 +2338,16 @@ int BPF_PROG(handle_socket_sendmsg, struct socket *sock, struct msghdr *msg, int
 
     if (msg_name) {
         if (bpf_probe_read_kernel(&family, sizeof(family), msg_name))
-            return enforcement_result();
+            /* Fail-open on parse error: never deny a syscall because we
+             * couldn't read the sockaddr.  Matches file-hook behavior. */
+            return 0;
 
         if (family == AF_INET) {
             struct sockaddr_in sin = {};
             if (msg_namelen < (__s32)sizeof(sin))
                 return 0;
             if (bpf_probe_read_kernel(&sin, sizeof(sin), msg_name))
-                return enforcement_result();
+                return 0;  /* fail-open on parse error */
             remote_ip_v4 = sin.sin_addr.s_addr;
             remote_port = bpf_ntohs(sin.sin_port);
         } else if (family == AF_INET6) {
@@ -2307,7 +2355,7 @@ int BPF_PROG(handle_socket_sendmsg, struct socket *sock, struct msghdr *msg, int
             if (msg_namelen < (__s32)sizeof(sin6))
                 return 0;
             if (bpf_probe_read_kernel(&sin6, sizeof(sin6), msg_name))
-                return enforcement_result();
+                return 0;  /* fail-open on parse error */
             remote_port = bpf_ntohs(sin6.sin6_port);
             __builtin_memcpy(remote_ip_v6.addr, &sin6.sin6_addr, sizeof(remote_ip_v6.addr));
         } else {

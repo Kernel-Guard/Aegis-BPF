@@ -52,6 +52,7 @@ class BpfState {
             agent_meta = other.agent_meta;
             config_map = other.config_map;
             survival_allowlist = other.survival_allowlist;
+            policy_generation_map = other.policy_generation_map;
             links = std::move(other.links);
             inode_reused = other.inode_reused;
             deny_path_reused = other.deny_path_reused;
@@ -113,6 +114,7 @@ class BpfState {
             other.agent_meta = nullptr;
             other.config_map = nullptr;
             other.survival_allowlist = nullptr;
+            other.policy_generation_map = nullptr;
             other.deny_ipv4 = nullptr;
             other.deny_ipv6 = nullptr;
             other.deny_port = nullptr;
@@ -202,6 +204,9 @@ class BpfState {
 
     // Survival allowlist map
     bpf_map* survival_allowlist = nullptr;
+
+    // Policy generation commit marker map
+    bpf_map* policy_generation_map = nullptr;
 
     // Network maps
     bpf_map* deny_ipv4 = nullptr;
