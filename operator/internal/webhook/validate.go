@@ -3,6 +3,7 @@ package webhook
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"net/http"
@@ -95,12 +96,12 @@ func validateSpec(spec v1alpha1.AegisPolicySpec) []string {
 
 	if spec.ExecRules != nil {
 		for i, h := range spec.ExecRules.AllowBinaryHashes {
-			if len(h) != 64 {
+			if decoded, err := hex.DecodeString(h); err != nil || len(decoded) != 32 {
 				errs = append(errs, fmt.Sprintf("execRules.allowBinaryHashes[%d]: must be 64-char SHA-256 hex", i))
 			}
 		}
 		for i, h := range spec.ExecRules.DenyBinaryHashes {
-			if len(h) != 64 {
+			if decoded, err := hex.DecodeString(h); err != nil || len(decoded) != 32 {
 				errs = append(errs, fmt.Sprintf("execRules.denyBinaryHashes[%d]: must be 64-char SHA-256 hex", i))
 			}
 		}

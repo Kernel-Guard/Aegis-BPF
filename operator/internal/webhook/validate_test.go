@@ -130,3 +130,19 @@ func TestValidateSpecValidHash(t *testing.T) {
 		t.Errorf("expected no errors, got: %v", errs)
 	}
 }
+
+func TestValidateSpecNonHex64CharHash(t *testing.T) {
+	// 64 characters long but contains non-hex character 'g'
+	nonHexHash := "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg"
+
+	spec := v1alpha1.AegisPolicySpec{
+		Mode: "enforce",
+		ExecRules: &v1alpha1.ExecRules{
+			AllowBinaryHashes: []string{nonHexHash},
+		},
+	}
+	errs := validateSpec(spec)
+	if len(errs) == 0 {
+		t.Error("expected error for non-hex 64-character hash")
+	}
+}

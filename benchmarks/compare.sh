@@ -144,6 +144,109 @@ CSRC
     rm -f "$src" "$bin" "$testfile"
 }
 
+# Run the network-connect microbenchmark with a given agent running.
+run_network_connect_bench() {
+    local agent_name="${1:-baseline}"
+    local iters=$((ITERATIONS / 10))
+
+    local src
+    src=$(mktemp --suffix=.c)
+    cat > "$src" <<'CSRC'
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <time.h>
+#include <unistd.h>
+
+static inline long long now_ns(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (long long)ts.tv_sec * 1000000000LL + ts.tv_nsec;
+}
+
+static int cmp_ll(const void *a, const void *b) {
+    long long va = *(const long long *)a, vb = *(const long long *)b;
+    return (va > vb) - (va < vb);
+}
+
+int main(int argc, char *argv[]) {
+    int iters = argc > 1 ? atoi(argv[1]) : 10000;
+    const char *agent = argc > 2 ? argv[2] : "baseline";
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(1);
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+    long long *lat = malloc(sizeof(long long) * iters);
+    if (!lat) { perror("malloc"); return 1; }
+
+    for (int i = 0; i < iters; i++) {
+        int fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+        if (fd < 0) { lat[i] = 0; continue; }
+        long long s = now_ns();
+        connect(fd, (struct sockaddr *)&addr, sizeof(addr));
+        lat[i] = now_ns() - s;
+        close(fd);
+    }
+
+    qsort(lat, iters, sizeof(long long), cmp_ll);
+
+    long long total = 0;
+    for (int i = 0; i < iters; i++) total += lat[i];
+
+    printf("{\"agent\":\"%s\",\"mean_ns\":%lld,\"p50_ns\":%lld,\"p95_ns\":%lld,\"p99_ns\":%lld,\"min_ns\":%lld,\"max_ns\":%lld}\n",
+        agent, total / iters, lat[iters/2], lat[(int)(iters*0.95)], lat[(int)(iters*0.99)], lat[0], lat[iters-1]);
+
+    free(lat);
+    return 0;
+}
+CSRC
+
+    local bin
+    bin=$(mktemp)
+    gcc -O2 -o "$bin" "$src" 2>/dev/null
+
+    "$bin" "$iters" "$agent_name"
+
+    rm -f "$src" "$bin"
+}
+
+# Run the process-exec microbenchmark with a given agent running.
+run_process_exec_bench() {
+    local agent_name="${1:-baseline}"
+    local iters=$((ITERATIONS / 100))
+
+    local results=()
+    for ((i = 0; i < iters; i++)); do
+        local start end
+        start=$(date +%s%N)
+        /bin/true
+        end=$(date +%s%N)
+        results+=($((end - start)))
+    done
+
+    python3 -c "
+import json
+data = [${results[*]// /,}]
+data.sort()
+n = len(data)
+mean = sum(data) // n
+print(json.dumps({
+    'agent': '$agent_name',
+    'mean_ns': mean,
+    'p50_ns': data[n // 2],
+    'p95_ns': data[int(n * 0.95)],
+    'p99_ns': data[int(n * 0.99)],
+    'min_ns': data[0],
+    'max_ns': data[-1]
+}))
+"
+}
+
 generate_comparison() {
     local results_file="$1"
     info "=== Comparison Results ==="
@@ -184,8 +287,20 @@ main() {
 
     local results_file="$RESULTS_DIR/comparison.jsonl"
 
-    info "Running baseline (no agent)..."
-    run_file_open_bench "baseline" >> "$results_file"
+    # Select the benchmark function based on TEST_FILTER
+    local bench_fn
+    case "$TEST_FILTER" in
+        file-open)       bench_fn=run_file_open_bench ;;
+        network-connect) bench_fn=run_network_connect_bench ;;
+        process-exec)    bench_fn=run_process_exec_bench ;;
+        *)
+            error "Unknown test: $TEST_FILTER. Valid options: file-open, network-connect, process-exec"
+            exit 1
+            ;;
+    esac
+
+    info "Running baseline (no agent) [$TEST_FILTER]..."
+    $bench_fn "baseline" >> "$results_file"
 
     # Run with each detected agent
     IFS=',' read -ra tools <<< "$TOOLS"
@@ -194,7 +309,7 @@ main() {
             aegisbpf)
                 if pgrep -x aegisbpf &>/dev/null; then
                     info "Running with AegisBPF (already running)..."
-                    run_file_open_bench "aegisbpf" >> "$results_file"
+                    $bench_fn "aegisbpf" >> "$results_file"
                 else
                     info "AegisBPF not running, skipping live comparison"
                 fi
@@ -202,7 +317,7 @@ main() {
             falco)
                 if pgrep -x falco &>/dev/null; then
                     info "Running with Falco (already running)..."
-                    run_file_open_bench "falco" >> "$results_file"
+                    $bench_fn "falco" >> "$results_file"
                 else
                     info "Falco not running, skipping live comparison"
                 fi
@@ -210,7 +325,7 @@ main() {
             tetragon)
                 if pgrep -f tetragon &>/dev/null; then
                     info "Running with Tetragon (already running)..."
-                    run_file_open_bench "tetragon" >> "$results_file"
+                    $bench_fn "tetragon" >> "$results_file"
                 else
                     info "Tetragon not running, skipping live comparison"
                 fi
@@ -218,7 +333,7 @@ main() {
             tracee)
                 if pgrep -x tracee &>/dev/null; then
                     info "Running with Tracee (already running)..."
-                    run_file_open_bench "tracee" >> "$results_file"
+                    $bench_fn "tracee" >> "$results_file"
                 else
                     info "Tracee not running, skipping live comparison"
                 fi

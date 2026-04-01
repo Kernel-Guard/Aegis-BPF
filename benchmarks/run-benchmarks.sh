@@ -46,9 +46,18 @@ check_prereqs() {
         exit 1
     fi
 
+    # Optional tools: script can run without these, but measurements may be limited.
     for cmd in taskset perf; do
         if ! command -v "$cmd" &>/dev/null; then
             warn "$cmd not found, some measurements will be limited"
+        fi
+    done
+
+    # Required tools: benchmark compilation and JSON summarization depend on these.
+    for cmd in gcc python3; do
+        if ! command -v "$cmd" &>/dev/null; then
+            error "$cmd is required but was not found in PATH. Please install $cmd before running benchmarks."
+            exit 1
         fi
     done
 

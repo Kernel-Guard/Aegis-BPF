@@ -62,7 +62,10 @@ spec:
         duration: 10s
         factor: 2
         maxDuration: 3m
-  # Health check: consider policy "healthy" when phase=Applied.
+  # ignoreDifferences prevents ArgoCD from reporting the application as OutOfSync
+  # when only /status fields differ (status is managed by the operator, not Git).
+  # To assess custom health based on CRD status fields, add a Lua health check
+  # under configs.resource.customizations in the ArgoCD ConfigMap.
   ignoreDifferences:
     - group: aegisbpf.io
       kind: AegisPolicy

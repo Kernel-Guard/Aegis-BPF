@@ -112,11 +112,13 @@ func TestTranslateKernelRules(t *testing.T) {
 }
 
 func TestTranslateExecRules(t *testing.T) {
+	allowHash := "a3b1c2d4e5f678900000000000000000a3b1c2d4e5f678900000000000000001"
+	denyHash := "d4e5f678900000001a3b1c2d4e5f67890a3b1c2d4e5f67890a3b1c2d4e5f6789"
 	spec := v1alpha1.AegisPolicySpec{
 		Mode: "enforce",
 		ExecRules: &v1alpha1.ExecRules{
-			AllowBinaryHashes: []string{"abc123"},
-			DenyBinaryHashes:  []string{"def456"},
+			AllowBinaryHashes: []string{allowHash},
+			DenyBinaryHashes:  []string{denyHash},
 		},
 	}
 	result, err := TranslateToINI(spec)
@@ -126,13 +128,13 @@ func TestTranslateExecRules(t *testing.T) {
 	if !strings.Contains(result.INI, "[allow_binary_hash]") {
 		t.Error("missing [allow_binary_hash]")
 	}
-	if !strings.Contains(result.INI, "sha256:abc123") {
+	if !strings.Contains(result.INI, "sha256:"+allowHash) {
 		t.Error("missing allow hash entry")
 	}
 	if !strings.Contains(result.INI, "[deny_binary_hash]") {
 		t.Error("missing [deny_binary_hash]")
 	}
-	if !strings.Contains(result.INI, "sha256:def456") {
+	if !strings.Contains(result.INI, "sha256:"+denyHash) {
 		t.Error("missing deny hash entry")
 	}
 }
@@ -198,5 +200,29 @@ func TestMergeDeduplicates(t *testing.T) {
 	count := strings.Count(merged.INI, "/usr/bin/a")
 	if count != 1 {
 		t.Errorf("expected 1 occurrence, got %d", count)
+	}
+}
+
+func TestMergePoliciesDeterministic(t *testing.T) {
+	p1 := TranslateResult{
+		INI:    "version=5\n[deny_path]\n/usr/bin/a\n\n",
+		SHA256: "aaa",
+	}
+	p2 := TranslateResult{
+		INI:    "version=5\n[deny_path]\n/usr/bin/b\n\n[deny_ip]\n10.0.0.1\n\n",
+		SHA256: "bbb",
+	}
+
+	input1 := []TranslateResult{p1, p2}
+	input2 := []TranslateResult{p1, p2}
+
+	merged1 := MergePolicies(input1)
+	merged2 := MergePolicies(input2)
+
+	if merged1.SHA256 != merged2.SHA256 {
+		t.Error("same merged input should produce same hash")
+	}
+	if merged1.INI != merged2.INI {
+		t.Error("same merged input should produce same INI output")
 	}
 }

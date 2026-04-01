@@ -24,11 +24,9 @@ sudo ./compare.sh --tools aegisbpf,falco,tetragon
 |------|-----------------|--------|
 | `file-open` | File open syscall overhead | 100k `open()`/`close()` cycles |
 | `network-connect` | TCP connect latency | 10k `connect()` to localhost |
-| `process-exec` | Process exec overhead | 10k `fork()`/`exec()` cycles |
-| `memory` | RSS/VSZ at idle and under load | `/proc/<pid>/status` sampling |
-| `cpu-overhead` | CPU% at sustained event rate | `perf stat` during load |
-| `startup` | Time to first enforcement | Wall clock from exec to ready |
-| `policy-reload` | Hot policy reload latency | Measure `policy apply` round-trip |
+| `process-exec` | Process execution overhead | 1k `/bin/true` invocations |
+| `memory` | RSS/VSZ at idle | `/proc/<pid>/status` sampling |
+| `startup` | Time to first enforcement | Wall clock from exec to `--help` exit |
 
 ## Methodology
 
@@ -36,7 +34,7 @@ All benchmarks follow these principles:
 
 1. **Isolation**: Each test runs in a clean cgroup/namespace
 2. **Warm-up**: 1000 iterations discarded before measurement
-3. **Statistical rigor**: Reports mean, p50, p95, p99, stddev
+3. **Statistical rigor**: Reports mean, p50, p95, p99, min, max
 4. **Baseline**: Always measures without any agent first
 5. **Reproducibility**: Pinned kernel version, documented CPU governor
 
