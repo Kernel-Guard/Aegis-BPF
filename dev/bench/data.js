@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775061685611,
+  "lastUpdate": 1775159300193,
   "repoUrl": "https://github.com/ErenAri/Aegis-BPF",
   "entries": {
     "Benchmark": [
@@ -31974,6 +31974,108 @@ window.BENCHMARK_DATA = {
             "value": 53.80513175289815,
             "unit": "ns/iter",
             "extra": "iterations: 12\ncpu: 53.796380224843325 ns\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "erenari27@gmail.com",
+            "name": "Eren Arı",
+            "username": "ErenAri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7106083f3ef9f6d07f767a6dacb790631e315409",
+          "message": "Merge pull request #70 from ErenAri/feat/v02-perf-posture-automation\n\nFeat/v02 perf posture automation",
+          "timestamp": "2026-04-02T22:36:42+03:00",
+          "tree_id": "21b518f07871d70896dc2a165a8f0855a1146d7d",
+          "url": "https://github.com/ErenAri/Aegis-BPF/commit/7106083f3ef9f6d07f767a6dacb790631e315409"
+        },
+        "date": 1775159299155,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "BM_Sha256Long/64_mean",
+            "value": 1520.6769591082418,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1520.4282382053807 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/512_mean",
+            "value": 3679.566954197349,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 3678.9177111232016 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/4096_mean",
+            "value": 20977.369524165435,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 20971.95529521674 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/32768_mean",
+            "value": 159308.3699083023,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 159281.77741464888 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/262144_mean",
+            "value": 1269346.3319795432,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1269113.5639290002 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/1048576_mean",
+            "value": 5062758.849578821,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 5061875.022262333 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/100_mean",
+            "value": 5877.34855464417,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 5895.74330286088 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/512_mean",
+            "value": 36779.05130179382,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 36775.91056455027 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/4096_mean",
+            "value": 292609.3987586416,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 292599.5140482375 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/10000_mean",
+            "value": 900285.672390063,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 900364.6325950526 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseIpv6_mean",
+            "value": 52.538826308643586,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 52.53029038825286 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseIpv6Full_mean",
+            "value": 78.25437179820129,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 78.23486034686702 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseCidrV6_mean",
+            "value": 53.04768824729041,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 53.039688236458666 ns\nthreads: 1"
           }
         ]
       }
