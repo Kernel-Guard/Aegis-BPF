@@ -30,6 +30,12 @@ inline constexpr const char* kSurvivalAllowlistPin = "/sys/fs/bpf/aegisbpf/survi
 inline constexpr const char* kBpfObjInstallPath = "/usr/lib/aegisbpf/aegis.bpf.o";
 
 // Network map pin paths
+// Cgroup-scoped deny map pin paths
+inline constexpr const char* kDenyCgroupInodePin = "/sys/fs/bpf/aegisbpf/deny_cgroup_inode";
+inline constexpr const char* kDenyCgroupIpv4Pin = "/sys/fs/bpf/aegisbpf/deny_cgroup_ipv4";
+inline constexpr const char* kDenyCgroupPortPin = "/sys/fs/bpf/aegisbpf/deny_cgroup_port";
+
+// Network map pin paths
 inline constexpr const char* kDenyIpv4Pin = "/sys/fs/bpf/aegisbpf/deny_ipv4";
 inline constexpr const char* kDenyIpv6Pin = "/sys/fs/bpf/aegisbpf/deny_ipv6";
 inline constexpr const char* kDenyPortPin = "/sys/fs/bpf/aegisbpf/deny_port";
@@ -59,7 +65,7 @@ inline constexpr const char* kControlLogPath = "/var/lib/aegisbpf/control_log.js
 inline constexpr const char* kControlLockPath = "/var/lib/aegisbpf/control.lock";
 inline constexpr const char* kBpfObjHashPath = "/etc/aegisbpf/aegis.bpf.sha256";
 inline constexpr const char* kBpfObjHashInstallPath = "/usr/lib/aegisbpf/aegis.bpf.sha256";
-inline constexpr const char* kCapabilitiesSchemaSemver = "1.5.0";
+inline constexpr const char* kCapabilitiesSchemaSemver = "1.6.0";
 inline constexpr uint32_t kLayoutVersion = 1;
 inline constexpr size_t kDenyPathMax = 256;
 inline constexpr uint8_t kEnforceSignalNone = 0;
@@ -75,6 +81,8 @@ inline constexpr uint8_t kExecIdentityFlagAllowlistEnforce = 1u << 0;
 inline constexpr uint8_t kExecIdentityFlagProtectConnect = 1u << 1;
 inline constexpr uint8_t kExecIdentityFlagProtectFiles = 1u << 2;
 inline constexpr uint8_t kExecIdentityFlagTrustRuntimeDeps = 1u << 3;
+inline constexpr uint8_t kExecIdentityFlagAllowOverlayfs = 1u << 4;
+inline constexpr uint8_t kExecIdentityFlagSkipVerity = 1u << 5;
 
 enum EventType : uint32_t {
     EVENT_EXEC = 1,
@@ -339,6 +347,26 @@ struct PathKey {
     char path[kDenyPathMax];
 };
 
+// Cgroup-scoped deny key structures — match BPF-side layout
+struct CgroupInodeKey {
+    uint64_t cgid;
+    InodeId inode;
+};
+
+struct CgroupIpv4Key {
+    uint64_t cgid;
+    uint32_t addr; /* Network byte order */
+    uint32_t _pad;
+};
+
+struct CgroupPortKey {
+    uint64_t cgid;
+    uint16_t port;
+    uint8_t protocol;  /* 0=any, 6=tcp, 17=udp */
+    uint8_t direction; /* 0=egress, 1=bind, 2=both */
+    uint32_t _pad;
+};
+
 using DenyEntries = std::unordered_map<InodeId, std::string, InodeIdHash>;
 
 // Enhanced deny entry with full tracking information
@@ -376,10 +404,12 @@ struct AgentConfig {
     uint32_t event_sample_rate;
     uint32_t sigkill_escalation_threshold;      /* SIGKILL after N denies in window */
     uint32_t sigkill_escalation_window_seconds; /* Escalation window size */
+    uint64_t policy_generation;                 /* monotonic generation after atomic policy commit */
+    uint8_t deadman_fail_static;                /* 1 = keep enforcement on deadman expiry (fail-static) */
     uint8_t deny_ptrace;                        /* block ptrace attachment (MITRE T1055.008) */
     uint8_t deny_module_load;                   /* block kernel module loading (MITRE T1547.006) */
     uint8_t deny_bpf;                           /* block unauthorized BPF program load (MITRE T1562) */
-    uint8_t _pad_kernel;
+    uint8_t _reserved[4];                       /* alignment padding */
 };
 
 struct AgentMeta {
@@ -406,6 +436,33 @@ struct NetworkPolicy {
     bool enabled = false;
 };
 
+// Cgroup-scoped deny rules — each pairs a cgroup identifier with a rule.
+// The cgroup is specified as a path (resolved to cgid at apply time) or a
+// numeric cgid.  These are parsed from [cgroup_deny_inode], [cgroup_deny_ip],
+// and [cgroup_deny_port] policy sections (v6+).
+
+struct CgroupDenyInodeRule {
+    std::string cgroup; /* path or "cgid:<N>" */
+    InodeId inode;
+};
+
+struct CgroupDenyIpRule {
+    std::string cgroup; /* path or "cgid:<N>" */
+    std::string ip;     /* IPv4 address string */
+};
+
+struct CgroupDenyPortRule {
+    std::string cgroup; /* path or "cgid:<N>" */
+    PortRule port;
+};
+
+struct CgroupPolicy {
+    std::vector<CgroupDenyInodeRule> deny_inodes;
+    std::vector<CgroupDenyIpRule> deny_ips;
+    std::vector<CgroupDenyPortRule> deny_ports;
+    bool enabled = false;
+};
+
 struct Policy {
     int version = 0;
     std::vector<std::string> deny_paths;
@@ -419,6 +476,7 @@ struct Policy {
     std::vector<std::string> allow_cgroup_paths;
     std::vector<uint64_t> allow_cgroup_ids;
     NetworkPolicy network;
+    CgroupPolicy cgroup;                          // per-cgroup scoped deny rules (v6+)
     std::vector<std::string> deny_binary_hashes;  // sha256:... entries (v3+)
     std::vector<std::string> allow_binary_hashes; // sha256:... entries (v3+)
     std::vector<std::string> scan_paths;          // Extra paths for binary hash scan (v3+)
@@ -446,7 +504,7 @@ static_assert(sizeof(BlockEvent) == 336, "BlockEvent size changed — update BPF
 static_assert(sizeof(NetBlockEvent) == 104, "NetBlockEvent size changed — update BPF struct");
 static_assert(sizeof(InodeId) == 16, "InodeId size changed — update BPF struct");
 static_assert(sizeof(PathKey) == 256, "PathKey size changed — update BPF struct");
-static_assert(sizeof(AgentConfig) == 40, "AgentConfig size changed — update BPF struct");
+static_assert(sizeof(AgentConfig) == 48, "AgentConfig size changed — update BPF struct");
 static_assert(sizeof(AgentMeta) == 4, "AgentMeta size changed — update BPF struct");
 static_assert(sizeof(BlockStats) == 16, "BlockStats size changed — update BPF struct");
 static_assert(sizeof(PortKey) == 4, "PortKey size changed — update BPF struct");
@@ -455,6 +513,9 @@ static_assert(sizeof(IpPortV6Key) == 20, "IpPortV6Key size changed — update BP
 static_assert(sizeof(Ipv4LpmKey) == 8, "Ipv4LpmKey size changed — update BPF struct");
 static_assert(sizeof(Ipv6LpmKey) == 20, "Ipv6LpmKey size changed — update BPF struct");
 static_assert(sizeof(NetBlockStats) == 48, "NetBlockStats size changed — update BPF struct");
+static_assert(sizeof(CgroupInodeKey) == 24, "CgroupInodeKey size changed — update BPF struct");
+static_assert(sizeof(CgroupIpv4Key) == 16, "CgroupIpv4Key size changed — update BPF struct");
+static_assert(sizeof(CgroupPortKey) == 16, "CgroupPortKey size changed — update BPF struct");
 static_assert(sizeof(ExecArgvEvent) == 280, "ExecArgvEvent size changed — update BPF struct");
 static_assert(sizeof(DiagEvent) == 88, "DiagEvent size changed — update BPF struct");
 static_assert(sizeof(HookLatencyEntry) == 32, "HookLatencyEntry size changed — update BPF struct");

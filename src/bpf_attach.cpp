@@ -10,8 +10,6 @@
 
 namespace aegis {
 
-namespace {
-
 Result<void> attach_prog(bpf_program* prog, BpfState& state)
 {
     const char* sec = bpf_program__section_name(prog);
@@ -28,6 +26,8 @@ Result<void> attach_prog(bpf_program* prog, BpfState& state)
     state.links.push_back(link);
     return {};
 }
+
+namespace {
 
 Result<void> attach_required_program(BpfState& state, const std::string& trace_id, const std::string& parent_span_id,
                                      const char* span_name, const char* prog_name, const std::string& missing_message)

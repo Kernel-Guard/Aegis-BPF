@@ -41,14 +41,15 @@ AgentConfig default_agent_config()
 
 bool file_policy_maps_empty(const BpfState& state)
 {
-    return map_is_empty(state.deny_inode) && map_is_empty(state.deny_path);
+    return map_is_empty(state.deny_inode) && map_is_empty(state.deny_path) && map_is_empty(state.deny_cgroup_inode);
 }
 
 bool net_policy_maps_empty(const BpfState& state)
 {
     return map_is_empty(state.deny_ipv4) && map_is_empty(state.deny_ipv6) && map_is_empty(state.deny_port) &&
            map_is_empty(state.deny_ip_port_v4) && map_is_empty(state.deny_ip_port_v6) &&
-           map_is_empty(state.deny_cidr_v4) && map_is_empty(state.deny_cidr_v6);
+           map_is_empty(state.deny_cidr_v4) && map_is_empty(state.deny_cidr_v6) &&
+           map_is_empty(state.deny_cgroup_ipv4) && map_is_empty(state.deny_cgroup_port);
 }
 
 } // namespace
@@ -276,6 +277,42 @@ Result<void> update_deadman_deadline(BpfState& state, uint64_t deadline_ns)
 
     if (bpf_map_update_elem(fd, &key, &cfg, BPF_ANY)) {
         return Error::system(errno, "Failed to update deadman deadline");
+    }
+    return {};
+}
+
+Result<uint64_t> bump_policy_generation(BpfState& state)
+{
+    if (!state.config_map) {
+        return Error(ErrorCode::BpfMapOperationFailed, "config_map not available");
+    }
+
+    int fd = bpf_map__fd(state.config_map);
+    uint32_t key = 0;
+    AgentConfig cfg{};
+    if (bpf_map_lookup_elem(fd, &key, &cfg)) {
+        return Error::system(errno, "Failed to read agent config for generation bump");
+    }
+
+    cfg.policy_generation += 1;
+
+    if (bpf_map_update_elem(fd, &key, &cfg, BPF_ANY)) {
+        return Error::system(errno, "Failed to write bumped policy generation");
+    }
+
+    return cfg.policy_generation;
+}
+
+Result<void> commit_policy_generation(BpfState& state, uint64_t generation)
+{
+    if (!state.policy_generation_map) {
+        return {}; // map not present (older BPF object) — skip
+    }
+
+    int fd = bpf_map__fd(state.policy_generation_map);
+    uint32_t key = 0;
+    if (bpf_map_update_elem(fd, &key, &generation, BPF_ANY)) {
+        return Error::system(errno, "Failed to commit policy generation to map");
     }
     return {};
 }

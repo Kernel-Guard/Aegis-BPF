@@ -20,9 +20,11 @@
 #include <set>
 #include <vector>
 
+#include "bpf_attach.hpp"
 #include "bpf_integrity.hpp"
 #include "kernel_features.hpp"
 #include "logging.hpp"
+#include "network_ops.hpp"
 #include "tracing.hpp"
 #include "utils.hpp"
 
@@ -137,23 +139,6 @@ void cleanup_bpf(BpfState& state)
 void BpfState::cleanup()
 {
     cleanup_bpf(*this);
-}
-
-static Result<void> attach_prog(bpf_program* prog, BpfState& state)
-{
-    const char* sec = bpf_program__section_name(prog);
-    const bool is_lsm = sec && (std::strncmp(sec, "lsm/", 4) == 0 || std::strncmp(sec, "lsm.s/", 6) == 0);
-
-    bpf_link* link = is_lsm ? bpf_program__attach_lsm(prog) : bpf_program__attach(prog);
-    int err = libbpf_get_error(link);
-    if (err || !link) {
-        if (err == 0) {
-            err = -EINVAL;
-        }
-        return Error::bpf_error(err, "Failed to attach BPF program");
-    }
-    state.links.push_back(link);
-    return {};
 }
 
 void set_ringbuf_bytes(uint32_t bytes)
@@ -287,6 +272,12 @@ Result<void> load_bpf(bool reuse_pins, bool attach_links, BpfState& state)
             state.config_map = bpf_object__find_map_by_name(state.obj, ".bss");
         }
         state.survival_allowlist = bpf_object__find_map_by_name(state.obj, "survival_allowlist");
+        state.policy_generation_map = bpf_object__find_map_by_name(state.obj, "policy_generation");
+
+        // Cgroup-scoped deny maps
+        state.deny_cgroup_inode = bpf_object__find_map_by_name(state.obj, "deny_cgroup_inode");
+        state.deny_cgroup_ipv4 = bpf_object__find_map_by_name(state.obj, "deny_cgroup_ipv4");
+        state.deny_cgroup_port = bpf_object__find_map_by_name(state.obj, "deny_cgroup_port");
 
         // Diagnostics and process cache maps (optional)
         state.diagnostics = bpf_object__find_map_by_name(state.obj, "diagnostics");
@@ -475,6 +466,16 @@ Result<void> load_bpf(bool reuse_pins, bool attach_links, BpfState& state)
         TRY(check(try_reuse_optional(state.net_block_stats, kNetBlockStatsPin, state.net_block_stats_reused)));
         TRY(check(try_reuse_optional(state.net_ip_stats, kNetIpStatsPin, state.net_ip_stats_reused)));
         TRY(check(try_reuse_optional(state.net_port_stats, kNetPortStatsPin, state.net_port_stats_reused)));
+
+        // Cgroup-scoped deny maps (optional — reuse flags are not tracked in BpfState
+        // because these maps are always rebuilt from policy; the pins exist purely for
+        // post-crash introspection via bpftool)
+        {
+            bool dummy = false;
+            try_reuse_optional(state.deny_cgroup_inode, kDenyCgroupInodePin, dummy);
+            try_reuse_optional(state.deny_cgroup_ipv4, kDenyCgroupIpv4Pin, dummy);
+            try_reuse_optional(state.deny_cgroup_port, kDenyCgroupPortPin, dummy);
+        }
     }
 
     {
@@ -638,6 +639,21 @@ Result<void> load_bpf(bool reuse_pins, bool attach_links, BpfState& state)
         if (state.net_port_stats) {
             TRY(check(try_pin(state.net_port_stats, kNetPortStatsPin, state.net_port_stats_reused)));
         }
+
+        // Cgroup-scoped deny maps (best-effort pin; use a dummy reuse flag since
+        // these are rebuilt from policy on every apply)
+        {
+            bool dummy = false;
+            if (state.deny_cgroup_inode) {
+                try_pin(state.deny_cgroup_inode, kDenyCgroupInodePin, dummy);
+            }
+            if (state.deny_cgroup_ipv4) {
+                try_pin(state.deny_cgroup_ipv4, kDenyCgroupIpv4Pin, dummy);
+            }
+            if (state.deny_cgroup_port) {
+                try_pin(state.deny_cgroup_port, kDenyCgroupPortPin, dummy);
+            }
+        }
     }
 
     if (attach_links) {
@@ -789,6 +805,65 @@ Result<void> add_allow_exec_inode_to_fd(int allow_exec_inode_fd, const InodeId& 
     uint8_t one = 1;
     if (bpf_map_update_elem(allow_exec_inode_fd, &id, &one, BPF_ANY)) {
         return Error::system(errno, "Failed to update shadow allow_exec_inode_map");
+    }
+    return {};
+}
+
+// --- Cgroup-scoped deny operations ---
+
+Result<uint64_t> resolve_cgroup_identifier(const std::string& cgroup_str)
+{
+    if (cgroup_str.rfind("cgid:", 0) == 0) {
+        std::string id_str = cgroup_str.substr(5);
+        uint64_t cgid = 0;
+        if (!parse_uint64(id_str, cgid)) {
+            return Error(ErrorCode::InvalidArgument, "Invalid cgid value", id_str);
+        }
+        return cgid;
+    }
+    return path_to_cgid(cgroup_str);
+}
+
+Result<void> add_cgroup_deny_inode_to_fd(int map_fd, uint64_t cgid, const InodeId& inode)
+{
+    CgroupInodeKey key{};
+    key.cgid = cgid;
+    key.inode = inode;
+    uint8_t one = 1;
+    if (bpf_map_update_elem(map_fd, &key, &one, BPF_ANY)) {
+        return Error::system(errno, "Failed to update deny_cgroup_inode map");
+    }
+    return {};
+}
+
+Result<void> add_cgroup_deny_ipv4_to_fd(int map_fd, uint64_t cgid, const std::string& ip)
+{
+    uint32_t ip_be = 0;
+    if (!parse_ipv4(ip, ip_be)) {
+        return Error(ErrorCode::InvalidArgument, "Invalid IPv4 address for cgroup deny", ip);
+    }
+    CgroupIpv4Key key{};
+    key.cgid = cgid;
+    key.addr = ip_be;
+    key._pad = 0;
+    uint8_t one = 1;
+    if (bpf_map_update_elem(map_fd, &key, &one, BPF_ANY)) {
+        return Error::system(errno, "Failed to update deny_cgroup_ipv4 map");
+    }
+    return {};
+}
+
+Result<void> add_cgroup_deny_port_to_fd(int map_fd, uint64_t cgid, const PortRule& rule)
+{
+    CgroupPortKey key{};
+    key.cgid = cgid;
+    key.port = rule.port;
+    key.protocol = rule.protocol;
+    key.direction = rule.direction;
+    key._pad = 0;
+    uint8_t one = 1;
+    if (bpf_map_update_elem(map_fd, &key, &one, BPF_ANY)) {
+        return Error::system(errno, "Failed to update deny_cgroup_port map");
     }
     return {};
 }
