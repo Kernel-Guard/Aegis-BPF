@@ -239,6 +239,11 @@ Result<void> load_bpf(bool reuse_pins, bool attach_links, BpfState& state)
         state.survival_allowlist = bpf_object__find_map_by_name(state.obj, "survival_allowlist");
         state.policy_generation_map = bpf_object__find_map_by_name(state.obj, "policy_generation");
 
+        // Cgroup-scoped deny maps
+        state.deny_cgroup_inode = bpf_object__find_map_by_name(state.obj, "deny_cgroup_inode");
+        state.deny_cgroup_ipv4 = bpf_object__find_map_by_name(state.obj, "deny_cgroup_ipv4");
+        state.deny_cgroup_port = bpf_object__find_map_by_name(state.obj, "deny_cgroup_port");
+
         // Network maps (optional)
         state.deny_ipv4 = bpf_object__find_map_by_name(state.obj, "deny_ipv4");
         state.deny_ipv6 = bpf_object__find_map_by_name(state.obj, "deny_ipv6");

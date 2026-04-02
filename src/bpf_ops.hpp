@@ -53,6 +53,9 @@ class BpfState {
             config_map = other.config_map;
             survival_allowlist = other.survival_allowlist;
             policy_generation_map = other.policy_generation_map;
+            deny_cgroup_inode = other.deny_cgroup_inode;
+            deny_cgroup_ipv4 = other.deny_cgroup_ipv4;
+            deny_cgroup_port = other.deny_cgroup_port;
             links = std::move(other.links);
             inode_reused = other.inode_reused;
             deny_path_reused = other.deny_path_reused;
@@ -115,6 +118,9 @@ class BpfState {
             other.config_map = nullptr;
             other.survival_allowlist = nullptr;
             other.policy_generation_map = nullptr;
+            other.deny_cgroup_inode = nullptr;
+            other.deny_cgroup_ipv4 = nullptr;
+            other.deny_cgroup_port = nullptr;
             other.deny_ipv4 = nullptr;
             other.deny_ipv6 = nullptr;
             other.deny_port = nullptr;
@@ -207,6 +213,11 @@ class BpfState {
 
     // Policy generation commit marker map
     bpf_map* policy_generation_map = nullptr;
+
+    // Cgroup-scoped deny maps
+    bpf_map* deny_cgroup_inode = nullptr;
+    bpf_map* deny_cgroup_ipv4 = nullptr;
+    bpf_map* deny_cgroup_port = nullptr;
 
     // Network maps
     bpf_map* deny_ipv4 = nullptr;

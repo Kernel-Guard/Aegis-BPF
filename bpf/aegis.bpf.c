@@ -465,6 +465,58 @@ struct {
     __type(value, struct signal_escalation_state);
 } enforce_signal_state SEC(".maps");
 
+/* ============================================================================
+ * Cgroup-Scoped Deny Maps
+ *
+ * These maps key deny rules by (cgid, rule_key) for per-workload policy in
+ * multi-tenant environments.  Hooks check these BEFORE the global maps, so
+ * a cgroup-scoped deny can target a specific workload without affecting others.
+ * ============================================================================ */
+
+struct cgroup_inode_key {
+    __u64 cgid;
+    struct inode_id inode;
+};
+
+struct cgroup_ipv4_key {
+    __u64 cgid;
+    __be32 addr;
+    __u32 _pad;
+};
+
+struct cgroup_port_key {
+    __u64 cgid;
+    __u16 port;
+    __u8 protocol;  /* 0=any, 6=tcp, 17=udp */
+    __u8 direction; /* 0=egress, 1=bind, 2=both */
+    __u32 _pad;
+};
+
+#define MAX_DENY_CGROUP_INODE_ENTRIES 32768
+#define MAX_DENY_CGROUP_IPV4_ENTRIES 16384
+#define MAX_DENY_CGROUP_PORT_ENTRIES 4096
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_DENY_CGROUP_INODE_ENTRIES);
+    __type(key, struct cgroup_inode_key);
+    __type(value, __u8);
+} deny_cgroup_inode SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_DENY_CGROUP_IPV4_ENTRIES);
+    __type(key, struct cgroup_ipv4_key);
+    __type(value, __u8);
+} deny_cgroup_ipv4 SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_DENY_CGROUP_PORT_ENTRIES);
+    __type(key, struct cgroup_port_key);
+    __type(value, __u8);
+} deny_cgroup_port SEC(".maps");
+
 /* Policy generation: single-entry array used as an atomic commit marker.
  * Userspace bumps agent_cfg.policy_generation (forcing audit during sync),
  * then writes the matching value here after all maps are synchronized.
@@ -811,6 +863,55 @@ static __always_inline int should_emit_event(__u32 sample_rate)
 static __always_inline int is_cgroup_allowed(__u64 cgid)
 {
     return bpf_map_lookup_elem(&allow_cgroup_map, &cgid) != NULL;
+}
+
+/* Check cgroup-scoped deny for an inode.  Returns rule flags byte or 0. */
+static __always_inline __u8 cgroup_inode_denied(__u64 cgid, const struct inode_id *id)
+{
+    struct cgroup_inode_key key = {
+        .cgid = cgid,
+        .inode = *id,
+    };
+    __u8 *v = bpf_map_lookup_elem(&deny_cgroup_inode, &key);
+    return v ? *v : 0;
+}
+
+/* Check cgroup-scoped deny for an IPv4 address.  Returns 1 if denied. */
+static __always_inline int cgroup_ipv4_denied(__u64 cgid, __be32 addr)
+{
+    struct cgroup_ipv4_key key = {
+        .cgid = cgid,
+        .addr = addr,
+        ._pad = 0,
+    };
+    return bpf_map_lookup_elem(&deny_cgroup_ipv4, &key) != NULL;
+}
+
+/* Check cgroup-scoped deny for a port.  Returns 1 if denied. */
+static __always_inline int cgroup_port_denied(__u64 cgid, __u16 port, __u8 protocol, __u8 direction)
+{
+    struct cgroup_port_key key = {
+        .cgid = cgid,
+        .port = port,
+        .protocol = protocol,
+        .direction = direction,
+        ._pad = 0,
+    };
+
+    if (bpf_map_lookup_elem(&deny_cgroup_port, &key))
+        return 1;
+
+    key.protocol = 0;  /* any protocol */
+    if (bpf_map_lookup_elem(&deny_cgroup_port, &key))
+        return 1;
+
+    key.direction = 2;  /* both directions */
+    key.protocol = protocol;
+    if (bpf_map_lookup_elem(&deny_cgroup_port, &key))
+        return 1;
+
+    key.protocol = 0;  /* both + any protocol */
+    return bpf_map_lookup_elem(&deny_cgroup_port, &key) != NULL;
 }
 
 /* ============================================================================
@@ -1304,11 +1405,18 @@ int BPF_PROG(handle_file_open, struct file *file)
     key.ino = BPF_CORE_READ(inode, i_ino);
     key.dev = (__u32)BPF_CORE_READ(inode, i_sb, s_dev);
 
-    /* Check if inode is in deny list */
+    __u64 cgid = bpf_get_current_cgroup_id();
+
+    /* Check cgroup-scoped deny first (per-workload policy) */
+    __u8 cg_rule = cgroup_inode_denied(cgid, &key);
+
+    /* Then check global deny list */
     __u8 *rule = bpf_map_lookup_elem(&deny_inode_map, &key);
-    if (!rule)
+
+    if (!rule && !cg_rule)
         return 0;
-    const __u8 rule_flags = *rule;
+
+    const __u8 rule_flags = cg_rule ? cg_rule : (rule ? *rule : 0);
     const __u8 protect_only = (rule_flags & RULE_FLAG_PROTECT_VERIFIED_EXEC) &&
                               !(rule_flags & RULE_FLAG_DENY_ALWAYS);
 
@@ -1316,9 +1424,8 @@ int BPF_PROG(handle_file_open, struct file *file)
     if (bpf_map_lookup_elem(&survival_allowlist, &key))
         return 0;
 
-    __u64 cgid = bpf_get_current_cgroup_id();
-    /* Skip allowed cgroups */
-    if (is_cgroup_allowed(cgid))
+    /* Skip allowed cgroups (global bypass — only for global rules) */
+    if (!cg_rule && is_cgroup_allowed(cgid))
         return 0;
 
     __u32 pid = bpf_get_current_pid_tgid() >> 32;
@@ -1416,11 +1523,18 @@ static __always_inline int handle_inode_permission_impl(struct inode *inode, int
     key.ino = BPF_CORE_READ(inode, i_ino);
     key.dev = (__u32)BPF_CORE_READ(inode, i_sb, s_dev);
 
-    /* Check if inode is in deny list */
+    __u64 cgid = bpf_get_current_cgroup_id();
+
+    /* Check cgroup-scoped deny first (per-workload policy) */
+    __u8 cg_rule = cgroup_inode_denied(cgid, &key);
+
+    /* Then check global deny list */
     __u8 *rule = bpf_map_lookup_elem(&deny_inode_map, &key);
-    if (!rule)
+
+    if (!rule && !cg_rule)
         return 0;
-    const __u8 rule_flags = *rule;
+
+    const __u8 rule_flags = cg_rule ? cg_rule : (rule ? *rule : 0);
     const __u8 protect_only = (rule_flags & RULE_FLAG_PROTECT_VERIFIED_EXEC) &&
                               !(rule_flags & RULE_FLAG_DENY_ALWAYS);
 
@@ -1428,9 +1542,8 @@ static __always_inline int handle_inode_permission_impl(struct inode *inode, int
     if (bpf_map_lookup_elem(&survival_allowlist, &key))
         return 0;
 
-    __u64 cgid = bpf_get_current_cgroup_id();
-    /* Skip allowed cgroups */
-    if (is_cgroup_allowed(cgid))
+    /* Skip allowed cgroups (global bypass — only for global rules) */
+    if (!cg_rule && is_cgroup_allowed(cgid))
         return 0;
 
     __u32 pid = bpf_get_current_pid_tgid() >> 32;
@@ -1684,6 +1797,18 @@ int BPF_PROG(handle_socket_connect, struct socket *sock,
             matched = 1;
             __builtin_memcpy(rule_type, "identity", sizeof("identity"));
         }
+    }
+
+    /* Cgroup-scoped network deny checks (per-workload policy) */
+    if (!matched && family == AF_INET && cgroup_ipv4_denied(cgid, remote_ip_v4)) {
+        matched = 1;
+        __builtin_memcpy(rule_type, "cg_ip", 6);
+        increment_net_ip_stat_v4(remote_ip_v4);
+    }
+    if (!matched && cgroup_port_denied(cgid, remote_port, protocol, 0)) {
+        matched = 1;
+        __builtin_memcpy(rule_type, "cg_port", 8);
+        increment_net_port_stat(remote_port);
     }
 
     if (family == AF_INET) {

@@ -30,6 +30,12 @@ inline constexpr const char* kSurvivalAllowlistPin = "/sys/fs/bpf/aegisbpf/survi
 inline constexpr const char* kBpfObjInstallPath = "/usr/lib/aegisbpf/aegis.bpf.o";
 
 // Network map pin paths
+// Cgroup-scoped deny map pin paths
+inline constexpr const char* kDenyCgroupInodePin = "/sys/fs/bpf/aegisbpf/deny_cgroup_inode";
+inline constexpr const char* kDenyCgroupIpv4Pin = "/sys/fs/bpf/aegisbpf/deny_cgroup_ipv4";
+inline constexpr const char* kDenyCgroupPortPin = "/sys/fs/bpf/aegisbpf/deny_cgroup_port";
+
+// Network map pin paths
 inline constexpr const char* kDenyIpv4Pin = "/sys/fs/bpf/aegisbpf/deny_ipv4";
 inline constexpr const char* kDenyIpv6Pin = "/sys/fs/bpf/aegisbpf/deny_ipv6";
 inline constexpr const char* kDenyPortPin = "/sys/fs/bpf/aegisbpf/deny_port";
@@ -229,6 +235,26 @@ struct PathKey {
     char path[kDenyPathMax];
 };
 
+// Cgroup-scoped deny key structures — match BPF-side layout
+struct CgroupInodeKey {
+    uint64_t cgid;
+    InodeId inode;
+};
+
+struct CgroupIpv4Key {
+    uint64_t cgid;
+    uint32_t addr; /* Network byte order */
+    uint32_t _pad;
+};
+
+struct CgroupPortKey {
+    uint64_t cgid;
+    uint16_t port;
+    uint8_t protocol;  /* 0=any, 6=tcp, 17=udp */
+    uint8_t direction; /* 0=egress, 1=bind, 2=both */
+    uint32_t _pad;
+};
+
 using DenyEntries = std::unordered_map<InodeId, std::string, InodeIdHash>;
 
 // Enhanced deny entry with full tracking information
@@ -338,6 +364,9 @@ static_assert(sizeof(IpPortV6Key) == 20, "IpPortV6Key size changed — update BP
 static_assert(sizeof(Ipv4LpmKey) == 8, "Ipv4LpmKey size changed — update BPF struct");
 static_assert(sizeof(Ipv6LpmKey) == 20, "Ipv6LpmKey size changed — update BPF struct");
 static_assert(sizeof(NetBlockStats) == 48, "NetBlockStats size changed — update BPF struct");
+static_assert(sizeof(CgroupInodeKey) == 24, "CgroupInodeKey size changed — update BPF struct");
+static_assert(sizeof(CgroupIpv4Key) == 16, "CgroupIpv4Key size changed — update BPF struct");
+static_assert(sizeof(CgroupPortKey) == 16, "CgroupPortKey size changed — update BPF struct");
 
 // Critical field offset assertions — ensure wire-compatible layout.
 static_assert(offsetof(BlockEvent, path) == 68, "BlockEvent::path offset changed");
