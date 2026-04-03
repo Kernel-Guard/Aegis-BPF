@@ -2,7 +2,6 @@
 
 [![CI](https://github.com/ErenAri/Aegis-BPF/actions/workflows/ci.yml/badge.svg)](https://github.com/ErenAri/Aegis-BPF/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-240%2B%20passing-brightgreen)]()
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue)]()
 [![Architecture](https://img.shields.io/badge/arch-x86__64%20%7C%20ARM64-informational)]()
 [![Kernel](https://img.shields.io/badge/kernel-5.15%2B-orange)]()
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue)]()
