@@ -109,6 +109,7 @@ enum event_type {
     EVENT_NET_LISTEN_BLOCK = 12,
     EVENT_NET_ACCEPT_BLOCK = 13,
     EVENT_NET_SENDMSG_BLOCK = 14,
+    EVENT_NET_RECVMSG_BLOCK = 15,
     EVENT_KERNEL_PTRACE_BLOCK = 20,
     EVENT_KERNEL_MODULE_BLOCK = 21,
     EVENT_KERNEL_BPF_BLOCK = 22,
@@ -654,6 +655,7 @@ struct net_stats_entry {
     __u64 listen_blocks;
     __u64 accept_blocks;
     __u64 sendmsg_blocks;
+    __u64 recvmsg_blocks;
     __u64 ringbuf_drops;
 };
 
@@ -1150,6 +1152,7 @@ enum hook_id {
     HOOK_MODULE_LOAD = 11,
     HOOK_BPF = 12,
     HOOK_INODE_COPY_UP = 13,
+    HOOK_SOCKET_RECVMSG = 14,
 };
 
 static __always_inline void record_hook_latency(__u32 hook, __u64 start_ns)
@@ -1269,6 +1272,14 @@ static __always_inline void increment_net_sendmsg_stats(void)
     struct net_stats_entry *stats = bpf_map_lookup_elem(&net_block_stats, &zero);
     if (stats)
         __sync_fetch_and_add(&stats->sendmsg_blocks, 1);
+}
+
+static __always_inline void increment_net_recvmsg_stats(void)
+{
+    __u32 zero = 0;
+    struct net_stats_entry *stats = bpf_map_lookup_elem(&net_block_stats, &zero);
+    if (stats)
+        __sync_fetch_and_add(&stats->recvmsg_blocks, 1);
 }
 
 static __always_inline void increment_net_ringbuf_drops(void)

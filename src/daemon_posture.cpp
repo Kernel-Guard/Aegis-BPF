@@ -211,6 +211,7 @@ Result<void> write_capabilities_report(const std::string& output_path, const Ker
         out << "    \"lsm_socket_listen\": " << (state.socket_listen_hook_attached ? "true" : "false") << ",\n";
         out << "    \"lsm_socket_accept\": " << (state.socket_accept_hook_attached ? "true" : "false") << ",\n";
         out << "    \"lsm_socket_sendmsg\": " << (state.socket_sendmsg_hook_attached ? "true" : "false") << ",\n";
+        out << "    \"lsm_socket_recvmsg\": " << (state.socket_recvmsg_hook_attached ? "true" : "false") << ",\n";
         out << "    \"lsm_inode_copy_up\": " << (state.overlay_copy_up_hook_attached ? "true" : "false") << "\n";
         out << "  },\n";
         out << "  \"policy\": {\n";

@@ -2,6 +2,8 @@
 #include "events.hpp"
 
 #include <arpa/inet.h>
+#include <grp.h>
+#include <pwd.h>
 
 #include <atomic>
 #include <cstring>
@@ -17,6 +19,32 @@
 #endif
 
 namespace aegis {
+
+namespace {
+
+std::string resolve_username(uint32_t uid)
+{
+    struct passwd pwd {};
+    struct passwd* result = nullptr;
+    char buf[256];
+    if (getpwuid_r(uid, &pwd, buf, sizeof(buf), &result) == 0 && result) {
+        return result->pw_name;
+    }
+    return {};
+}
+
+std::string resolve_groupname(uint32_t gid)
+{
+    struct group grp {};
+    struct group* result = nullptr;
+    char buf[256];
+    if (getgrgid_r(gid, &grp, buf, sizeof(buf), &result) == 0 && result) {
+        return result->gr_name;
+    }
+    return {};
+}
+
+} // namespace
 
 EventLogSink g_event_sink = EventLogSink::Stdout;
 
@@ -110,7 +138,8 @@ void journal_send_net_block(const NetBlockEvent& ev, const std::string& payload,
                             : (ev.direction == 1) ? "bind"
                             : (ev.direction == 2) ? "listen"
                             : (ev.direction == 3) ? "accept"
-                                                  : "send";
+                            : (ev.direction == 4) ? "send"
+                                                  : "recv";
     std::string rule_type = to_string(ev.rule_type, sizeof(ev.rule_type));
     std::string action = to_string(ev.action, sizeof(ev.action));
 
@@ -318,9 +347,12 @@ void print_net_block_event(const NetBlockEvent& ev)
     } else if (ev.direction == 3) {
         event_type = "net_accept_block";
         direction = "accept";
-    } else {
+    } else if (ev.direction == 4) {
         event_type = "net_sendmsg_block";
         direction = "send";
+    } else {
+        event_type = "net_recvmsg_block";
+        direction = "recv";
     }
 
     oss << "{\"type\":\"" << event_type << "\"" << ",\"pid\":" << ev.pid << ",\"ppid\":" << ev.ppid
@@ -341,7 +373,7 @@ void print_net_block_event(const NetBlockEvent& ev)
     oss << ",\"protocol\":\"" << protocol_to_string(ev.protocol) << "\"";
     oss << ",\"direction\":\"" << direction << "\"";
 
-    if (ev.direction == 0 || ev.direction == 3 || ev.direction == 4) {
+    if (ev.direction == 0 || ev.direction == 3 || ev.direction == 4 || ev.direction == 5) {
         // Outbound/accepted socket events - show remote address
         if (ev.family == 2) {
             oss << ",\"remote_ip\":\"" << format_ipv4_addr(ev.remote_ipv4) << "\"";
@@ -426,7 +458,19 @@ void print_forensic_event(const ForensicEvent& ev)
         oss << ",\"parent_trace_id\":\"" << json_escape(parent_exec_id) << "\"";
     }
     oss << ",\"cgid\":" << ev.cgid << ",\"cgroup_path\":\"" << json_escape(cgpath) << "\"" << ",\"ino\":" << ev.ino
-        << ",\"dev\":" << ev.dev << ",\"uid\":" << ev.uid << ",\"gid\":" << ev.gid << ",\"exec_ino\":" << ev.exec_ino
+        << ",\"dev\":" << ev.dev << ",\"uid\":" << ev.uid;
+    {
+        std::string uname = resolve_username(ev.uid);
+        if (!uname.empty())
+            oss << ",\"username\":\"" << json_escape(uname) << "\"";
+    }
+    oss << ",\"gid\":" << ev.gid;
+    {
+        std::string gname = resolve_groupname(ev.gid);
+        if (!gname.empty())
+            oss << ",\"groupname\":\"" << json_escape(gname) << "\"";
+    }
+    oss << ",\"exec_ino\":" << ev.exec_ino
         << ",\"exec_dev\":" << ev.exec_dev << ",\"exec_stage\":" << static_cast<int>(ev.exec_stage)
         << ",\"verified_exec\":" << (ev.verified_exec ? "true" : "false")
         << ",\"exec_identity_known\":" << (ev.exec_identity_known ? "true" : "false") << ",\"action\":\""
@@ -510,7 +554,8 @@ int handle_event(void* ctx, void* data, size_t)
         print_block_event(e->block);
     } else if (e->type == EVENT_NET_CONNECT_BLOCK || e->type == EVENT_NET_BIND_BLOCK ||
                e->type == EVENT_NET_LISTEN_BLOCK || e->type == EVENT_NET_ACCEPT_BLOCK ||
-               e->type == EVENT_NET_SENDMSG_BLOCK) {
+               e->type == EVENT_NET_SENDMSG_BLOCK ||
+               e->type == EVENT_NET_RECVMSG_BLOCK) {
         print_net_block_event(e->net_block);
     } else if (e->type == EVENT_FORENSIC_BLOCK) {
         print_forensic_event(e->forensic);

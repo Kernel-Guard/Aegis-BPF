@@ -79,6 +79,7 @@ Result<void> attach_all(BpfState& state, bool lsm_enabled, bool use_inode_permis
     state.socket_listen_hook_attached = false;
     state.socket_accept_hook_attached = false;
     state.socket_sendmsg_hook_attached = false;
+    state.socket_recvmsg_hook_attached = false;
     state.ptrace_hook_attached = false;
     state.module_load_hook_attached = false;
     state.bpf_hook_attached = false;
@@ -211,6 +212,10 @@ Result<void> attach_all(BpfState& state, bool lsm_enabled, bool use_inode_permis
         prog = bpf_object__find_program_by_name(state.obj, "handle_socket_sendmsg");
         attach_optional_program(state, prog, state.socket_sendmsg_hook_attached,
                                 "Optional socket_sendmsg hook attach failed");
+
+        prog = bpf_object__find_program_by_name(state.obj, "handle_socket_recvmsg");
+        attach_optional_program(state, prog, state.socket_recvmsg_hook_attached,
+                                "Optional socket_recvmsg hook attach failed");
     }
 
     // Kernel security hooks (ptrace, module load, bpf) - all optional

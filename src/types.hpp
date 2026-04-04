@@ -60,7 +60,7 @@ inline constexpr const char* kControlLockPath = "/var/lib/aegisbpf/control.lock"
 inline constexpr const char* kBpfObjHashPath = "/etc/aegisbpf/aegis.bpf.sha256";
 inline constexpr const char* kBpfObjHashInstallPath = "/usr/lib/aegisbpf/aegis.bpf.sha256";
 inline constexpr const char* kCapabilitiesSchemaSemver = "1.5.0";
-inline constexpr uint32_t kLayoutVersion = 1;
+inline constexpr uint32_t kLayoutVersion = 2;
 inline constexpr size_t kDenyPathMax = 256;
 inline constexpr uint8_t kEnforceSignalNone = 0;
 inline constexpr uint8_t kEnforceSignalInt = 2;
@@ -86,6 +86,7 @@ enum EventType : uint32_t {
     EVENT_NET_LISTEN_BLOCK = 12,
     EVENT_NET_ACCEPT_BLOCK = 13,
     EVENT_NET_SENDMSG_BLOCK = 14,
+    EVENT_NET_RECVMSG_BLOCK = 15,
     EVENT_KERNEL_PTRACE_BLOCK = 20,
     EVENT_KERNEL_MODULE_BLOCK = 21,
     EVENT_KERNEL_BPF_BLOCK = 22,
@@ -270,6 +271,7 @@ struct NetBlockStats {
     uint64_t listen_blocks;
     uint64_t accept_blocks;
     uint64_t sendmsg_blocks;
+    uint64_t recvmsg_blocks;
     uint64_t ringbuf_drops;
 };
 
@@ -476,7 +478,7 @@ static_assert(sizeof(IpPortV4Key) == 8, "IpPortV4Key size changed — update BPF
 static_assert(sizeof(IpPortV6Key) == 20, "IpPortV6Key size changed — update BPF struct");
 static_assert(sizeof(Ipv4LpmKey) == 8, "Ipv4LpmKey size changed — update BPF struct");
 static_assert(sizeof(Ipv6LpmKey) == 20, "Ipv6LpmKey size changed — update BPF struct");
-static_assert(sizeof(NetBlockStats) == 48, "NetBlockStats size changed — update BPF struct");
+static_assert(sizeof(NetBlockStats) == 56, "NetBlockStats size changed — update BPF struct");
 static_assert(sizeof(ExecArgvEvent) == 280, "ExecArgvEvent size changed — update BPF struct");
 static_assert(sizeof(DiagEvent) == 88, "DiagEvent size changed — update BPF struct");
 static_assert(sizeof(HookLatencyEntry) == 32, "HookLatencyEntry size changed — update BPF struct");

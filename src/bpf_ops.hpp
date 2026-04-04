@@ -108,6 +108,7 @@ class BpfState {
             socket_listen_hook_attached = other.socket_listen_hook_attached;
             socket_accept_hook_attached = other.socket_accept_hook_attached;
             socket_sendmsg_hook_attached = other.socket_sendmsg_hook_attached;
+            socket_recvmsg_hook_attached = other.socket_recvmsg_hook_attached;
             ptrace_hook_attached = other.ptrace_hook_attached;
             module_load_hook_attached = other.module_load_hook_attached;
             bpf_hook_attached = other.bpf_hook_attached;
@@ -180,6 +181,7 @@ class BpfState {
             other.socket_listen_hook_attached = false;
             other.socket_accept_hook_attached = false;
             other.socket_sendmsg_hook_attached = false;
+            other.socket_recvmsg_hook_attached = false;
             other.ptrace_hook_attached = false;
             other.module_load_hook_attached = false;
             other.bpf_hook_attached = false;
@@ -276,6 +278,7 @@ class BpfState {
     bool socket_listen_hook_attached = false;
     bool socket_accept_hook_attached = false;
     bool socket_sendmsg_hook_attached = false;
+    bool socket_recvmsg_hook_attached = false;
     bool ptrace_hook_attached = false;
     bool module_load_hook_attached = false;
     bool bpf_hook_attached = false;
