@@ -195,6 +195,15 @@ void print_exec_event(const ExecEvent& ev)
     }
     oss << ",\"cgid\":" << ev.cgid << ",\"cgroup_path\":\"" << json_escape(cgpath) << "\"" << ",\"comm\":\""
         << json_escape(comm) << "\"";
+    if (ev.ancestor_count > 0) {
+        oss << ",\"ancestors\":[";
+        for (uint8_t i = 0; i < ev.ancestor_count && i < kAncestorMaxDepth; ++i) {
+            if (i > 0)
+                oss << ",";
+            oss << ev.ancestor_pids[i];
+        }
+        oss << "]";
+    }
     append_k8s_identity(oss, ev.pid);
     oss << "}";
 
@@ -469,6 +478,22 @@ void print_kernel_block_event(const KernelBlockEvent& ev)
     }
 }
 
+void print_overlay_copy_up_event(const OverlayCopyUpEvent& ev)
+{
+    std::ostringstream oss;
+    std::string cgpath = resolve_cgroup_path(ev.cgid);
+
+    oss << "{\"type\":\"overlay_copy_up\"" << ",\"pid\":" << ev.pid << ",\"cgid\":" << ev.cgid
+        << ",\"cgroup_path\":\"" << json_escape(cgpath) << "\"" << ",\"src_ino\":" << ev.src_ino
+        << ",\"src_dev\":" << ev.src_dev << ",\"deny_flags\":" << static_cast<int>(ev.deny_flags);
+    append_k8s_identity(oss, ev.pid);
+    oss << "}";
+
+    if (sink_wants_stdout(g_event_sink)) {
+        std::cout << oss.str() << '\n';
+    }
+}
+
 // cppcheck-suppress constParameterPointer
 int handle_event(void* ctx, void* data, size_t)
 {
@@ -492,6 +517,8 @@ int handle_event(void* ctx, void* data, size_t)
     } else if (e->type == EVENT_KERNEL_PTRACE_BLOCK || e->type == EVENT_KERNEL_MODULE_BLOCK ||
                e->type == EVENT_KERNEL_BPF_BLOCK) {
         print_kernel_block_event(e->kernel_block);
+    } else if (e->type == EVENT_OVERLAY_COPY_UP) {
+        print_overlay_copy_up_event(e->overlay_copy_up);
     }
     return 0;
 }

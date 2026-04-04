@@ -89,6 +89,7 @@ enum EventType : uint32_t {
     EVENT_KERNEL_PTRACE_BLOCK = 20,
     EVENT_KERNEL_MODULE_BLOCK = 21,
     EVENT_KERNEL_BPF_BLOCK = 22,
+    EVENT_OVERLAY_COPY_UP = 30,
 };
 
 enum DiagType : uint32_t {
@@ -111,12 +112,14 @@ enum HookId : uint32_t {
     HOOK_PTRACE = 10,
     HOOK_MODULE_LOAD = 11,
     HOOK_BPF = 12,
+    HOOK_INODE_COPY_UP = 13,
     HOOK_MAX = 16,
 };
 
 enum class EventLogSink { Stdout, Journald, StdoutAndJournald };
 
 inline constexpr size_t kMaxArgvSize = 256;
+inline constexpr size_t kAncestorMaxDepth = 8;
 
 // New map pin paths for quality improvements
 inline constexpr const char* kHookLatencyPin = "/sys/fs/bpf/aegisbpf/hook_latency";
@@ -130,6 +133,9 @@ struct ExecEvent {
     uint64_t start_time;
     uint64_t cgid;
     char comm[16];
+    uint32_t ancestor_pids[kAncestorMaxDepth]; /* parent chain beyond ppid */
+    uint8_t ancestor_count;
+    uint8_t _pad2[7]; /* pad to 8-byte alignment boundary */
 };
 
 struct ExecArgvEvent {
@@ -227,6 +233,19 @@ struct KernelBlockEvent {
     char rule_type[16]; /* "ptrace", "module", "bpf" */
 };
 
+/// OverlayFS copy-up event: a denied inode is being copied to the upper layer.
+/// Uses raw fields instead of InodeId to avoid forward-declaration dependency.
+struct OverlayCopyUpEvent {
+    uint32_t pid;
+    uint32_t _pad;
+    uint64_t cgid;
+    uint64_t src_ino;    /* lower-layer inode number (matches inode_id.ino) */
+    uint32_t src_dev;    /* lower-layer device (matches inode_id.dev) */
+    uint32_t _pad3;      /* matches inode_id.pad */
+    uint8_t deny_flags;
+    uint8_t _pad2[7];
+};
+
 struct Event {
     uint32_t type;
     union {
@@ -236,6 +255,7 @@ struct Event {
         NetBlockEvent net_block;
         ForensicEvent forensic;
         KernelBlockEvent kernel_block;
+        OverlayCopyUpEvent overlay_copy_up;
     };
 };
 
@@ -442,7 +462,8 @@ struct PolicyIssues {
 // Compile-time struct layout assertions.
 // These catch silent mismatches between userspace types and BPF map layouts.
 // Sizes must match the corresponding BPF-side definitions in aegis.bpf.c.
-static_assert(sizeof(ExecEvent) == 40, "ExecEvent size changed — update BPF struct");
+static_assert(sizeof(ExecEvent) == 80, "ExecEvent size changed — update BPF struct");
+static_assert(sizeof(OverlayCopyUpEvent) == 40, "OverlayCopyUpEvent size changed — update BPF struct");
 static_assert(sizeof(BlockEvent) == 336, "BlockEvent size changed — update BPF struct");
 static_assert(sizeof(NetBlockEvent) == 104, "NetBlockEvent size changed — update BPF struct");
 static_assert(sizeof(InodeId) == 16, "InodeId size changed — update BPF struct");

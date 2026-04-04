@@ -81,6 +81,7 @@
 #define PRIORITY_RINGBUF_SIZE (1 << 22) /* 4MB for high-priority security events */
 #define MAX_FORENSIC_FDS 8
 #define MAX_FORENSIC_PATH 64
+#define ANCESTOR_MAX_DEPTH 8
 
 /* Network Map Size Constants */
 #define MAX_DENY_IPV4_ENTRIES 65536
@@ -111,6 +112,7 @@ enum event_type {
     EVENT_KERNEL_PTRACE_BLOCK = 20,
     EVENT_KERNEL_MODULE_BLOCK = 21,
     EVENT_KERNEL_BPF_BLOCK = 22,
+    EVENT_OVERLAY_COPY_UP = 30,
 };
 
 /* Exec hook stages for multi-hook correlation */
@@ -151,6 +153,9 @@ struct exec_event {
     __u64 start_time;
     __u64 cgid;
     char comm[16];
+    __u32 ancestor_pids[ANCESTOR_MAX_DEPTH]; /* parent chain: [0]=grandparent, etc. */
+    __u8 ancestor_count;
+    __u8 _pad2[7]; /* pad to 8-byte alignment boundary */
 };
 
 struct exec_argv_event {
@@ -268,6 +273,23 @@ struct kernel_block_event {
     char rule_type[16]; /* "ptrace", "module", "bpf" */
 };
 
+/* OverlayFS copy-up event: emitted when a denied inode is about to be
+ * copied from the lower layer to the upper layer.  Userspace must
+ * re-resolve the file path to obtain the new upper-layer inode and
+ * propagate the deny rule.
+ * Uses raw fields instead of struct inode_id to avoid forward-declaration
+ * dependency (inode_id is defined after the event structs). */
+struct overlay_copy_up_event {
+    __u32 pid;
+    __u32 _pad;
+    __u64 cgid;
+    __u64 src_ino;     /* lower-layer inode number */
+    __u32 src_dev;     /* lower-layer device */
+    __u32 _pad3;
+    __u8 deny_flags;
+    __u8 _pad2[7];
+};
+
 struct event {
     __u32 type;
     union {
@@ -276,6 +298,7 @@ struct event {
         struct block_event block;
         struct net_block_event net_block;
         struct kernel_block_event kernel_block;
+        struct overlay_copy_up_event overlay_copy_up;
     };
 };
 
@@ -1126,6 +1149,7 @@ enum hook_id {
     HOOK_PTRACE = 10,
     HOOK_MODULE_LOAD = 11,
     HOOK_BPF = 12,
+    HOOK_INODE_COPY_UP = 13,
 };
 
 static __always_inline void record_hook_latency(__u32 hook, __u64 start_ns)
@@ -1319,6 +1343,34 @@ static __always_inline void fill_net_block_event_process_info(
         ev->start_time = pi->start_time;
         ev->parent_start_time = pi->parent_start_time;
     }
+}
+
+/* Walk the task_struct->real_parent chain to capture process ancestry.
+ * Populates pids[] starting from the grandparent (skipping the direct parent
+ * which is already in ppid).  Returns the number of ancestors captured.
+ * Bounded to ANCESTOR_MAX_DEPTH iterations for verifier safety. */
+static __always_inline __u8 fill_ancestry(
+    __u32 pids[ANCESTOR_MAX_DEPTH], struct task_struct *task)
+{
+    if (!task)
+        return 0;
+
+    __u8 depth = 0;
+    struct task_struct *cur = task;
+
+#pragma unroll
+    for (int i = 0; i < ANCESTOR_MAX_DEPTH; i++) {
+        struct task_struct *parent = BPF_CORE_READ(cur, real_parent);
+        if (!parent || parent == cur)
+            return depth;
+        __u32 pid = BPF_CORE_READ(parent, tgid);
+        if (pid <= 1)
+            return depth;
+        pids[depth] = pid;
+        depth++;
+        cur = parent;
+    }
+    return depth;
 }
 
 static __always_inline int port_rule_matches(__u16 port, __u8 protocol, __u8 direction)

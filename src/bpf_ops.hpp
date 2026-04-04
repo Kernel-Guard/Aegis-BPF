@@ -111,6 +111,7 @@ class BpfState {
             ptrace_hook_attached = other.ptrace_hook_attached;
             module_load_hook_attached = other.module_load_hook_attached;
             bpf_hook_attached = other.bpf_hook_attached;
+            overlay_copy_up_hook_attached = other.overlay_copy_up_hook_attached;
 
             // Reset other to prevent double-free
             other.obj = nullptr;
@@ -182,6 +183,7 @@ class BpfState {
             other.ptrace_hook_attached = false;
             other.module_load_hook_attached = false;
             other.bpf_hook_attached = false;
+            other.overlay_copy_up_hook_attached = false;
             other.links.clear();
         }
         return *this;
@@ -277,6 +279,7 @@ class BpfState {
     bool ptrace_hook_attached = false;
     bool module_load_hook_attached = false;
     bool bpf_hook_attached = false;
+    bool overlay_copy_up_hook_attached = false;
 };
 
 // BPF loading and lifecycle
