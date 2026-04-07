@@ -52,6 +52,10 @@ class BpfState {
             agent_meta = other.agent_meta;
             config_map = other.config_map;
             survival_allowlist = other.survival_allowlist;
+            policy_generation_map = other.policy_generation_map;
+            deny_cgroup_inode = other.deny_cgroup_inode;
+            deny_cgroup_ipv4 = other.deny_cgroup_ipv4;
+            deny_cgroup_port = other.deny_cgroup_port;
             links = std::move(other.links);
             inode_reused = other.inode_reused;
             deny_path_reused = other.deny_path_reused;
@@ -130,6 +134,10 @@ class BpfState {
             other.agent_meta = nullptr;
             other.config_map = nullptr;
             other.survival_allowlist = nullptr;
+            other.policy_generation_map = nullptr;
+            other.deny_cgroup_inode = nullptr;
+            other.deny_cgroup_ipv4 = nullptr;
+            other.deny_cgroup_port = nullptr;
             other.diagnostics = nullptr;
             other.dead_processes = nullptr;
             other.hook_latency = nullptr;
@@ -233,6 +241,14 @@ class BpfState {
     // Survival allowlist map
     bpf_map* survival_allowlist = nullptr;
 
+    // Policy generation commit marker map
+    bpf_map* policy_generation_map = nullptr;
+
+    // Cgroup-scoped deny maps
+    bpf_map* deny_cgroup_inode = nullptr;
+    bpf_map* deny_cgroup_ipv4 = nullptr;
+    bpf_map* deny_cgroup_port = nullptr;
+
     // Diagnostics and process cache maps
     bpf_map* diagnostics = nullptr;
     bpf_map* dead_processes = nullptr;
@@ -255,7 +271,6 @@ class BpfState {
     bpf_map* net_ip_stats = nullptr;
     bpf_map* net_port_stats = nullptr;
     bpf_map* backpressure = nullptr;
-    bpf_map* policy_generation_map = nullptr;
 
     // Network reuse flags
     bool deny_ipv4_reused = false;
@@ -340,6 +355,13 @@ Result<void> add_deny_path_to_fds(int inode_fd, int path_fd, const std::string& 
 Result<void> add_allow_cgroup_to_fd(int cgroup_fd, uint64_t cgid);
 Result<void> add_allow_cgroup_path_to_fd(int cgroup_fd, const std::string& path);
 Result<void> add_allow_exec_inode_to_fd(int allow_exec_inode_fd, const InodeId& id);
+
+// Cgroup-scoped deny operations (FD-based for shadow or live maps)
+Result<void> add_cgroup_deny_inode_to_fd(int map_fd, uint64_t cgid, const InodeId& inode);
+Result<void> add_cgroup_deny_ipv4_to_fd(int map_fd, uint64_t cgid, const std::string& ip);
+Result<void> add_cgroup_deny_port_to_fd(int map_fd, uint64_t cgid, const PortRule& rule);
+// Resolve a cgroup identifier (path or "cgid:<N>") to a numeric cgroup ID.
+Result<uint64_t> resolve_cgroup_identifier(const std::string& cgroup_str);
 
 // System checks
 bool kernel_bpf_lsm_enabled();

@@ -43,9 +43,9 @@
 #define EXEC_IDENTITY_FLAG_PROTECT_CONNECT (1U << 1)
 #define EXEC_IDENTITY_FLAG_PROTECT_FILES (1U << 2)
 #define EXEC_IDENTITY_FLAG_TRUST_RUNTIME_DEPS (1U << 3)
-#define EXEC_IDENTITY_FLAG_ALLOW_OVERLAYFS (1U << 4)  /* treat overlayfs as verifiable (containers) */
-#define EXEC_IDENTITY_FLAG_SKIP_VERITY (1U << 5)      /* don't require FS_VERITY_FL (dev/testing) */
-#define EXEC_IDENTITY_FLAG_USE_IMA_HASH (1U << 6)     /* enable IMA-based hash verification (kernel 6.1+) */
+#define EXEC_IDENTITY_FLAG_ALLOW_OVERLAYFS (1U << 4) /* treat overlayfs as verifiable (containers) */
+#define EXEC_IDENTITY_FLAG_SKIP_VERITY (1U << 5)     /* don't require FS_VERITY_FL (dev/testing) */
+#define EXEC_IDENTITY_FLAG_USE_IMA_HASH (1U << 6)    /* enable IMA-based hash verification (kernel 6.1+) */
 
 #ifndef FS_VERITY_FL
 #define FS_VERITY_FL 0x00100000
@@ -95,6 +95,11 @@
 #define MAX_NET_IP_STATS_ENTRIES 16384
 #define MAX_NET_PORT_STATS_ENTRIES 4096
 #define MAX_ENFORCE_SIGNAL_STATE_ENTRIES 65536
+
+/* Cgroup-scoped deny map size constants */
+#define MAX_DENY_CGROUP_INODE_ENTRIES 32768
+#define MAX_DENY_CGROUP_IPV4_ENTRIES 16384
+#define MAX_DENY_CGROUP_PORT_ENTRIES 4096
 
 /* ============================================================================
  * Type Definitions
@@ -328,11 +333,12 @@ struct agent_config {
     __u32 event_sample_rate;
     __u32 sigkill_escalation_threshold;  /* SIGKILL after N denies in window */
     __u32 sigkill_escalation_window_seconds;  /* Escalation window size */
+    __u64 policy_generation;                  /* monotonic generation stamped after atomic policy commit */
+    __u8 deadman_fail_static;                 /* 1 = keep enforcement on deadman expiry (fail-static) */
     __u8 deny_ptrace;        /* block ptrace attachment (MITRE T1055.008) */
     __u8 deny_module_load;   /* block kernel module loading (MITRE T1547.006) */
     __u8 deny_bpf;           /* block unauthorized BPF program load (MITRE T1562) */
-    __u8 _pad_kernel;
-    __u64 policy_generation; /* monotonic generation stamped after atomic policy commit */
+    __u8 _reserved[4];       /* alignment padding */
 };
 
 /* Agent config is stored as a BPF global so programs can read it without a
@@ -353,10 +359,12 @@ volatile struct agent_config agent_cfg = {
     .event_sample_rate = 1,
     .sigkill_escalation_threshold = SIGKILL_ESCALATION_THRESHOLD_DEFAULT,
     .sigkill_escalation_window_seconds = 30,
+    .policy_generation = 0,
+    .deadman_fail_static = 0,
     .deny_ptrace = 0,
     .deny_module_load = 0,
     .deny_bpf = 0,
-    ._pad_kernel = 0,
+    ._reserved = {0},
 };
 
 struct agent_meta {
@@ -711,6 +719,54 @@ struct {
 } enforce_signal_state SEC(".maps");
 
 /* ============================================================================
+ * Cgroup-Scoped Deny Maps
+ *
+ * These maps key deny rules by (cgid, rule_key) for per-workload policy in
+ * multi-tenant environments.  Hooks check these BEFORE the global maps, so
+ * a cgroup-scoped deny can target a specific workload without affecting others.
+ * ============================================================================ */
+
+struct cgroup_inode_key {
+    __u64 cgid;
+    struct inode_id inode;
+};
+
+struct cgroup_ipv4_key {
+    __u64 cgid;
+    __be32 addr;
+    __u32 _pad;
+};
+
+struct cgroup_port_key {
+    __u64 cgid;
+    __u16 port;
+    __u8 protocol;  /* 0=any, 6=tcp, 17=udp */
+    __u8 direction; /* 0=egress, 1=bind, 2=both */
+    __u32 _pad;
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_DENY_CGROUP_INODE_ENTRIES);
+    __type(key, struct cgroup_inode_key);
+    __type(value, __u8);
+} deny_cgroup_inode SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_DENY_CGROUP_IPV4_ENTRIES);
+    __type(key, struct cgroup_ipv4_key);
+    __type(value, __u8);
+} deny_cgroup_ipv4 SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, MAX_DENY_CGROUP_PORT_ENTRIES);
+    __type(key, struct cgroup_port_key);
+    __type(value, __u8);
+} deny_cgroup_port SEC(".maps");
+
+/* ============================================================================
  * Helper Functions
  * ============================================================================ */
 
@@ -917,8 +973,7 @@ static __always_inline __u8 file_is_verified_exec_identity(const struct file *fi
      * treated as unverified — which blocks networking if
      * PROTECT_CONNECT is enabled. */
     __u32 magic = BPF_CORE_READ(inode, i_sb, s_magic);
-    if (magic == OVERLAYFS_SUPER_MAGIC &&
-        !(flags & EXEC_IDENTITY_FLAG_ALLOW_OVERLAYFS))
+    if (magic == OVERLAYFS_SUPER_MAGIC && !(flags & EXEC_IDENTITY_FLAG_ALLOW_OVERLAYFS))
         return 0;
 
     __u32 uid = BPF_CORE_READ(inode, i_uid.val);
@@ -944,27 +999,19 @@ static __always_inline __u8 file_is_verified_exec_identity(const struct file *fi
     return path_is_trusted_root(path);
 }
 
-/*
- * Check whether the committed policy generation matches what the agent
- * last wrote to agent_cfg.  If they disagree, a policy update is in
- * progress and maps may be in a partially-synchronized state.
- *
- * Returns 1 if policy is consistent (safe to enforce), 0 if a commit
- * is in-flight.  Hooks should fall back to audit during the mismatch
- * window to avoid enforcing a half-written ruleset.
- */
+/* Return 1 when the live policy maps match the expected generation.
+ * During a shadow->live sync, userspace bumps agent_cfg.policy_generation
+ * before copying maps, so committed != expected -> audit-only until commit. */
 static __always_inline __u8 is_policy_consistent(void)
 {
     const volatile struct agent_config *cfg = &agent_cfg;
     __u64 expected = cfg->policy_generation;
     if (expected == 0)
-        return 1;  /* generation tracking not yet enabled */
-
+        return 1; /* generation 0 means feature not yet activated */
     __u32 key = 0;
     __u64 *committed = bpf_map_lookup_elem(&policy_generation, &key);
     if (!committed)
-        return 1;  /* map not populated yet — treat as consistent */
-
+        return 1; /* map not populated yet -- don't force audit */
     return *committed == expected;
 }
 
@@ -984,16 +1031,17 @@ static __always_inline __u8 get_effective_audit_mode(void)
     if (cfg->audit_only)
         return 1;
 
-    /* Deadman switch: if enabled and deadline passed, revert to audit */
+    /* Deadman switch: if enabled and deadline passed, behavior depends on mode.
+     * fail-open (default): revert to audit-only
+     * fail-static: keep enforcement with last known good policy */
     if (cfg->deadman_enabled) {
         __u64 now = bpf_ktime_get_boot_ns();
-        if (now > cfg->deadman_deadline_ns)
-            return 1;  /* Deadline passed - failsafe to audit */
+        if (now > cfg->deadman_deadline_ns && !cfg->deadman_fail_static)
+            return 1;  /* Deadline passed and fail-open -- revert to audit */
     }
 
-    /* Atomic policy consistency: if a policy update is in-flight
-     * (generation mismatch), fall back to audit to avoid enforcing
-     * a half-written ruleset. */
+    /* Policy generation mismatch: maps are mid-update -- force audit to
+     * avoid enforcing a partially-synced ruleset. */
     if (!is_policy_consistent())
         return 1;
 
@@ -1126,6 +1174,53 @@ static __always_inline int should_emit_event(__u32 sample_rate)
 static __always_inline int is_cgroup_allowed(__u64 cgid)
 {
     return bpf_map_lookup_elem(&allow_cgroup_map, &cgid) != NULL;
+}
+
+/* Cgroup-scoped deny helpers -- check per-workload deny maps. */
+static __always_inline __u8 cgroup_inode_denied(__u64 cgid, const struct inode_id *id)
+{
+    struct cgroup_inode_key key = {
+        .cgid = cgid,
+        .inode = *id,
+    };
+    __u8 *v = bpf_map_lookup_elem(&deny_cgroup_inode, &key);
+    return v ? *v : 0;
+}
+
+static __always_inline int cgroup_ipv4_denied(__u64 cgid, __be32 addr)
+{
+    struct cgroup_ipv4_key key = {
+        .cgid = cgid,
+        .addr = addr,
+        ._pad = 0,
+    };
+    return bpf_map_lookup_elem(&deny_cgroup_ipv4, &key) != NULL;
+}
+
+static __always_inline int cgroup_port_denied(__u64 cgid, __u16 port, __u8 protocol, __u8 direction)
+{
+    struct cgroup_port_key key = {
+        .cgid = cgid,
+        .port = port,
+        .protocol = protocol,
+        .direction = direction,
+        ._pad = 0,
+    };
+
+    if (bpf_map_lookup_elem(&deny_cgroup_port, &key))
+        return 1;
+
+    key.protocol = 0; /* any protocol */
+    if (bpf_map_lookup_elem(&deny_cgroup_port, &key))
+        return 1;
+
+    key.direction = 2; /* both directions */
+    key.protocol = protocol;
+    if (bpf_map_lookup_elem(&deny_cgroup_port, &key))
+        return 1;
+
+    key.protocol = 0; /* both + any protocol */
+    return bpf_map_lookup_elem(&deny_cgroup_port, &key) != NULL;
 }
 
 /* ============================================================================

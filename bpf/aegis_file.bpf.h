@@ -34,13 +34,20 @@ int BPF_PROG(handle_file_open, struct file *file)
     key.ino = BPF_CORE_READ(inode, i_ino);
     key.dev = (__u32)BPF_CORE_READ(inode, i_sb, s_dev);
 
-    /* Check if inode is in deny list */
+    __u64 cgid = bpf_get_current_cgroup_id();
+
+    /* Check cgroup-scoped deny first (per-workload policy) */
+    __u8 cg_rule = cgroup_inode_denied(cgid, &key);
+
+    /* Then check global deny list */
     __u8 *rule = bpf_map_lookup_elem(&deny_inode_map, &key);
-    if (!rule) {
+
+    if (!rule && !cg_rule) {
         record_hook_latency(HOOK_FILE_OPEN, _start_ns);
         return 0;
     }
-    const __u8 rule_flags = *rule;
+
+    const __u8 rule_flags = cg_rule ? cg_rule : (rule ? *rule : 0);
     const __u8 protect_only = (rule_flags & RULE_FLAG_PROTECT_VERIFIED_EXEC) &&
                               !(rule_flags & RULE_FLAG_DENY_ALWAYS);
 
@@ -50,9 +57,8 @@ int BPF_PROG(handle_file_open, struct file *file)
         return 0;
     }
 
-    __u64 cgid = bpf_get_current_cgroup_id();
-    /* Skip allowed cgroups */
-    if (is_cgroup_allowed(cgid)) {
+    /* Skip allowed cgroups (global bypass -- only for global rules) */
+    if (!cg_rule && is_cgroup_allowed(cgid)) {
         record_hook_latency(HOOK_FILE_OPEN, _start_ns);
         return 0;
     }
@@ -169,11 +175,18 @@ static __always_inline int handle_inode_permission_impl(struct inode *inode, int
     key.ino = BPF_CORE_READ(inode, i_ino);
     key.dev = (__u32)BPF_CORE_READ(inode, i_sb, s_dev);
 
-    /* Check if inode is in deny list */
+    __u64 cgid = bpf_get_current_cgroup_id();
+
+    /* Check cgroup-scoped deny first (per-workload policy) */
+    __u8 cg_rule = cgroup_inode_denied(cgid, &key);
+
+    /* Then check global deny list */
     __u8 *rule = bpf_map_lookup_elem(&deny_inode_map, &key);
-    if (!rule)
+
+    if (!rule && !cg_rule)
         return 0;
-    const __u8 rule_flags = *rule;
+
+    const __u8 rule_flags = cg_rule ? cg_rule : (rule ? *rule : 0);
     const __u8 protect_only = (rule_flags & RULE_FLAG_PROTECT_VERIFIED_EXEC) &&
                               !(rule_flags & RULE_FLAG_DENY_ALWAYS);
 
@@ -181,9 +194,8 @@ static __always_inline int handle_inode_permission_impl(struct inode *inode, int
     if (bpf_map_lookup_elem(&survival_allowlist, &key))
         return 0;
 
-    __u64 cgid = bpf_get_current_cgroup_id();
-    /* Skip allowed cgroups */
-    if (is_cgroup_allowed(cgid))
+    /* Skip allowed cgroups (global bypass -- only for global rules) */
+    if (!cg_rule && is_cgroup_allowed(cgid))
         return 0;
 
     __u32 pid = bpf_get_current_pid_tgid() >> 32;

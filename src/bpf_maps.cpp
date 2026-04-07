@@ -189,6 +189,25 @@ Result<ShadowMapSet> create_shadow_map_set(const BpfState& state)
     }
     set.deny_cidr_v6 = std::move(*r);
 
+    // Cgroup-scoped deny maps
+    r = mk(state.deny_cgroup_inode);
+    if (!r) {
+        return r.error();
+    }
+    set.deny_cgroup_inode = std::move(*r);
+
+    r = mk(state.deny_cgroup_ipv4);
+    if (!r) {
+        return r.error();
+    }
+    set.deny_cgroup_ipv4 = std::move(*r);
+
+    r = mk(state.deny_cgroup_port);
+    if (!r) {
+        return r.error();
+    }
+    set.deny_cgroup_port = std::move(*r);
+
     return set;
 }
 
@@ -301,6 +320,14 @@ MapPressureReport check_map_pressure(const BpfState& state)
     add_map("deny_ip_port_v6", state.deny_ip_port_v6, kMaxDenyIpPortV6);
     add_map("deny_cidr_v4", state.deny_cidr_v4, kMaxDenyCidrV4);
     add_map("deny_cidr_v6", state.deny_cidr_v6, kMaxDenyCidrV6);
+
+    // Cgroup-scoped deny maps
+    static constexpr size_t kMaxDenyCgroupInode = 65536;
+    static constexpr size_t kMaxDenyCgroupIpv4 = 65536;
+    static constexpr size_t kMaxDenyCgroupPort = 4096;
+    add_map("deny_cgroup_inode", state.deny_cgroup_inode, kMaxDenyCgroupInode);
+    add_map("deny_cgroup_ipv4", state.deny_cgroup_ipv4, kMaxDenyCgroupIpv4);
+    add_map("deny_cgroup_port", state.deny_cgroup_port, kMaxDenyCgroupPort);
 
     return report;
 }

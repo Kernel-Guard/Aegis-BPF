@@ -160,6 +160,18 @@ int BPF_PROG(handle_socket_connect, struct socket *sock,
         }
     }
 
+    /* Check 5: Cgroup-scoped network deny (per-workload policy) */
+    if (!matched && family == AF_INET && cgroup_ipv4_denied(cgid, remote_ip_v4)) {
+        matched = 1;
+        __builtin_memcpy(rule_type, "cg_ip", 6);
+        increment_net_ip_stat_v4(remote_ip_v4);
+    }
+    if (!matched && cgroup_port_denied(cgid, remote_port, protocol, 0)) {
+        matched = 1;
+        __builtin_memcpy(rule_type, "cg_port", 8);
+        increment_net_port_stat(remote_port);
+    }
+
     if (!matched) {
         record_hook_latency(HOOK_SOCKET_CONNECT, _start_ns);
         return 0;
@@ -687,6 +699,18 @@ int BPF_PROG(handle_socket_accept, struct socket *sock, struct socket *newsock)
         increment_net_port_stat(accept_port);
     }
 
+    /* Cgroup-scoped network deny (per-workload policy) */
+    if (!matched && family == AF_INET && cgroup_ipv4_denied(cgid, remote_ip_v4)) {
+        matched = 1;
+        __builtin_memcpy(rule_type, "cg_ip", 6);
+        increment_net_ip_stat_v4(remote_ip_v4);
+    }
+    if (!matched && cgroup_port_denied(cgid, accept_port, protocol, 1)) {
+        matched = 1;
+        __builtin_memcpy(rule_type, "cg_port", 8);
+        increment_net_port_stat(accept_port);
+    }
+
     if (!matched) {
         record_hook_latency(HOOK_SOCKET_ACCEPT, _start_ns);
         return 0;
@@ -942,6 +966,18 @@ int BPF_PROG(handle_socket_sendmsg, struct socket *sock, struct msghdr *msg, int
     if (!matched && port_rule_matches(remote_port, protocol, 0)) {
         matched = 1;
         __builtin_memcpy(rule_type, "port", 5);
+        increment_net_port_stat(remote_port);
+    }
+
+    /* Cgroup-scoped network deny (per-workload policy) */
+    if (!matched && family == AF_INET && cgroup_ipv4_denied(cgid, remote_ip_v4)) {
+        matched = 1;
+        __builtin_memcpy(rule_type, "cg_ip", 6);
+        increment_net_ip_stat_v4(remote_ip_v4);
+    }
+    if (!matched && cgroup_port_denied(cgid, remote_port, protocol, 0)) {
+        matched = 1;
+        __builtin_memcpy(rule_type, "cg_port", 8);
         increment_net_port_stat(remote_port);
     }
 

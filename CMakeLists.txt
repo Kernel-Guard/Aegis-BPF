@@ -215,12 +215,14 @@ endif()
 set(AEGIS_SOURCES
     src/main.cpp
     src/binary_scan.cpp
+    src/cli_cgroup.cpp
     src/cli_common.cpp
     src/cli_dispatch.cpp
     src/cli_network.cpp
     src/cli_policy.cpp
     src/cli_run.cpp
     src/commands_block_allow.cpp
+    src/commands_cgroup.cpp
     src/commands_emergency.cpp
     src/commands_explain.cpp
     src/commands_health.cpp
@@ -267,12 +269,14 @@ set(AEGIS_SOURCES
 
 set(AEGIS_HEADERS
     src/binary_scan.hpp
+    src/cli_cgroup.hpp
     src/cli_common.hpp
     src/cli_dispatch.hpp
     src/cli_network.hpp
     src/cli_policy.hpp
     src/cli_run.hpp
     src/commands_block_allow.hpp
+    src/commands_cgroup.hpp
     src/commands_emergency.hpp
     src/commands_explain.hpp
     src/commands_health.hpp
@@ -363,6 +367,7 @@ target_compile_definitions(aegisbpf PRIVATE
 set(AEGIS_LIB_SOURCES
     src/binary_scan.cpp
     src/commands_block_allow.cpp
+    src/commands_cgroup.cpp
     src/commands_emergency.cpp
     src/commands_explain.cpp
     src/commands_health.cpp

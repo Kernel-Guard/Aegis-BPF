@@ -98,6 +98,12 @@ Result<AppliedPolicyRequirements> load_applied_policy_requirements(const std::st
         req.network_connect_required = true;
     }
     req.network_required = req.network_connect_required || req.network_bind_required;
+
+    // Cgroup-scoped rule counts
+    req.cgroup_deny_inode_count = parsed->cgroup.deny_inodes.size();
+    req.cgroup_deny_ip_count = parsed->cgroup.deny_ips.size();
+    req.cgroup_deny_port_count = parsed->cgroup.deny_ports.size();
+
     return req;
 }
 
@@ -199,7 +205,10 @@ Result<void> write_capabilities_report(const std::string& output_path, const Ker
         out << "    \"overlay_copy_up_propagation\": " << (state.overlay_copy_up_hook_attached ? "true" : "false")
             << ",\n";
         out << "    \"deep_process_lineage\": true,\n";
-        out << "    \"enhanced_rule_engine\": true\n";
+        out << "    \"enhanced_rule_engine\": true,\n";
+        out << "    \"cgroup_scoped_deny\": " << (state.deny_cgroup_inode != nullptr ? "true" : "false") << ",\n";
+        out << "    \"policy_generation\": " << (state.policy_generation_map != nullptr ? "true" : "false") << ",\n";
+        out << "    \"deadman_fail_static\": true\n";
         out << "  },\n";
         out << "  \"hooks\": {\n";
         out << "    \"lsm_file_open\": " << (file_open_hook_attached ? "true" : "false") << ",\n";
@@ -226,7 +235,11 @@ Result<void> write_capabilities_report(const std::string& output_path, const Ker
         out << "    \"protect_runtime_deps\": " << (policy_req.protect_runtime_deps ? "true" : "false") << ",\n";
         out << "    \"require_ima_appraisal\": " << (policy_req.ima_appraisal_required ? "true" : "false") << ",\n";
         out << "    \"allow_binary_hash_count\": " << static_cast<int64_t>(policy_req.allow_binary_hashes.size())
-            << "\n";
+            << ",\n";
+        out << "    \"cgroup_deny_inode_count\": " << static_cast<int64_t>(policy_req.cgroup_deny_inode_count)
+            << ",\n";
+        out << "    \"cgroup_deny_ip_count\": " << static_cast<int64_t>(policy_req.cgroup_deny_ip_count) << ",\n";
+        out << "    \"cgroup_deny_port_count\": " << static_cast<int64_t>(policy_req.cgroup_deny_port_count) << "\n";
         out << "  },\n";
         out << "  \"requirements\": {\n";
         out << "    \"network_enforcement_required\": " << (policy_req.network_required ? "true" : "false") << ",\n";
