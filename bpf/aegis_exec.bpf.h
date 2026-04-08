@@ -127,26 +127,34 @@ int handle_execve(struct trace_event_raw_sys_enter *ctx)
     int offset = 0;
     int argc = 0;
 
+    /*
+     * Per-argv read size is a compile-time constant so the verifier can
+     * prove the destination write is in-bounds without correlating
+     * `offset` and `remaining` across a loop iteration. Newer kernel
+     * verifiers (6.17+) reject the previous variable-size form because
+     * they lose the (offset + remaining == MAX_ARGV_SIZE) invariant.
+     */
+#define PER_ARG_READ_MAX 64
     if (argv) {
 #pragma unroll
         for (int i = 0; i < MAX_ARGV_ENTRIES; i++) {
-            if (offset >= MAX_ARGV_SIZE - 1)
+            /* Mask offset to a power-of-2 bound so verifier trusts it */
+            __u32 off = (__u32)offset & (MAX_ARGV_SIZE - 1);
+            if (off > MAX_ARGV_SIZE - PER_ARG_READ_MAX)
                 break;
             const char *arg = NULL;
             bpf_probe_read_user(&arg, sizeof(arg), &argv[i]);
             if (!arg)
                 break;
-            int remaining = MAX_ARGV_SIZE - offset;
-            if (remaining <= 0)
-                break;
             long len = bpf_probe_read_user_str(
-                &ae->exec_argv.argv[offset], remaining, arg);
+                &ae->exec_argv.argv[off], PER_ARG_READ_MAX, arg);
             if (len <= 0)
                 break;
-            offset += len;
+            offset = (int)off + (int)len;
             argc++;
         }
     }
+#undef PER_ARG_READ_MAX
 
     ae->exec_argv.argc = (__u16)argc;
     ae->exec_argv.total_len = (__u16)offset;
