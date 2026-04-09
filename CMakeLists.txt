@@ -361,6 +361,7 @@ endif()
 target_compile_definitions(aegisbpf PRIVATE
     AEGIS_BPF_OBJ_PATH="${AEGIS_BPF_OBJ_DEFINE_PATH}"
     AEGIS_ENABLE_SIGKILL_ENFORCEMENT=${AEGIS_SIGKILL_ENFORCEMENT_DEFINE}
+    AEGIS_VERSION_STRING="${PROJECT_VERSION}"
 )
 
 # Build library for testing (without main)
@@ -422,6 +423,7 @@ target_link_directories(aegisbpf_lib PUBLIC ${LIBBPF_LIBRARY_DIRS})
 target_link_libraries(aegisbpf_lib PUBLIC ${LIBBPF_LIBRARIES} ZLIB::ZLIB)
 target_compile_definitions(aegisbpf_lib PRIVATE AEGIS_BPF_OBJ_PATH="${AEGIS_BPF_OBJ_DEFINE_PATH}")
 target_compile_definitions(aegisbpf_lib PUBLIC AEGIS_ENABLE_SIGKILL_ENFORCEMENT=${AEGIS_SIGKILL_ENFORCEMENT_DEFINE})
+target_compile_definitions(aegisbpf_lib PUBLIC AEGIS_VERSION_STRING="${PROJECT_VERSION}")
 
 if (SYSTEMD_FOUND)
     target_compile_definitions(aegisbpf_lib PRIVATE HAVE_SYSTEMD)

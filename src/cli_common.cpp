@@ -5,6 +5,17 @@
 
 namespace aegis {
 
+#ifndef AEGIS_VERSION_STRING
+#define AEGIS_VERSION_STRING "0.0.0-unknown"
+#endif
+
+int print_version()
+{
+    /* Single canonical line; callers can grep on "aegisbpf " prefix. */
+    std::cout << "aegisbpf " << AEGIS_VERSION_STRING << '\n';
+    return 0;
+}
+
 int usage(const char* prog)
 {
     std::cerr
@@ -27,7 +38,8 @@ int usage(const char* prog)
         << " | emergency-disable --reason <text> [--reason-pattern <regex>] [--json] [--log=stdout|journald|both]"
         << " | emergency-enable --reason <text> [--reason-pattern <regex>] [--json] [--log=stdout|journald|both]"
         << " | emergency-status [--json] [--log=stdout|journald|both]" << " | probe"
-        << " | explain <event.json> [--policy <path>] [--json]" << '\n';
+        << " | explain <event.json> [--policy <path>] [--json]"
+        << " | version | --version | -V" << '\n';
     return 1;
 }
 
