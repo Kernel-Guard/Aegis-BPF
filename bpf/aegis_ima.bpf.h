@@ -22,7 +22,12 @@
  * other bprm_check_security program returns.
  */
 
-SEC("lsm/bprm_check_security")
+/*
+ * Sleepable LSM program: bpf_ima_file_hash() is a may-sleep helper since
+ * kernel 6.17; non-sleepable LSM programs that call it are rejected by
+ * the verifier with "helper call might sleep in a non-sleepable prog".
+ */
+SEC("lsm.s/bprm_check_security")
 int BPF_PROG(handle_bprm_ima_check, struct linux_binprm *bprm)
 {
     __u64 _start_ns = bpf_ktime_get_ns();
