@@ -57,6 +57,53 @@ mode=enforce
 - Break-glass marker file (fallback if CLI path is unavailable):
   - create `/etc/aegisbpf/break_glass` to force audit-only.
 
+## 2a) Configuration source precedence
+
+AegisBPF reads configuration from several sources. When the same knob is set
+in more than one place, the effective value is chosen in this order (highest
+to lowest precedence):
+
+1. **CLI flags** on `aegisbpf run` — authoritative for the running daemon
+   (e.g. `--enforce`, `--log-format=json`, `--enforce-gate-mode=fail-closed`).
+2. **Environment variables** (`AEGIS_*`) consumed at start-up. These exist for
+   packaging and override use cases; they can be set via
+   `packaging/systemd/aegisbpf.env` or a Helm values override. Notable vars:
+   - `AEGIS_BPF_OBJ`, `AEGIS_SKIP_BPF_VERIFY`, `AEGIS_REQUIRE_BPF_HASH`
+   - `AEGIS_ALLOW_UNSIGNED_BPF`
+   - `AEGIS_POLICY_APPLIED_PATH`, `AEGIS_POLICY_APPLIED_HASH_PATH`
+   - `AEGIS_POLICY_SHA256`, `AEGIS_POLICY_SHA256_FILE`
+   - `AEGIS_ENFORCE_GATE_MODE`
+   - `AEGIS_KEYS_DIR`, `AEGIS_VERSION_COUNTER_PATH`
+   - `AEGIS_CONTROL_STATE_PATH`, `AEGIS_CONTROL_LOG_PATH`,
+     `AEGIS_CONTROL_LOCK_PATH`, `AEGIS_NODE_NAME`
+   - `AEGIS_CAPABILITIES_REPORT_PATH`
+   - `AEGIS_OTEL_SPANS`
+3. **Control-plane state files** — persistent operator intent that outlives a
+   restart. Written by the CLI (`emergency-disable`, `policy apply`, etc.):
+   - `/var/lib/aegisbpf/control_state.json` (emergency state, break-glass)
+   - `/var/lib/aegisbpf/policy.applied` (+ `.sha256`, `.prev`)
+   - `/var/lib/aegisbpf/version_counter`
+4. **Break-glass marker files** — fail-safe fallback when the CLI is
+   unavailable (e.g. operator SSH only). Presence forces audit-only:
+   - `/etc/aegisbpf/break_glass`
+   - `/var/lib/aegisbpf/break_glass`
+   - `/etc/aegisbpf/break_glass.token` (optional auth token)
+5. **Policy file content** (`/etc/aegisbpf/policy.conf` or
+   `--policy <file>`) — all in-policy `deny_*`, `protect_*`, and `allow_*`
+   rules. Content precedence between rules is described in
+   `docs/POLICY_SEMANTICS.md`.
+6. **Kernel feature detection** — runtime capability probe
+   (`aegisbpf doctor`, `capabilities.json`) can silently downgrade hooks if
+   `--enforce-gate-mode=audit-fallback`; set `fail-closed` to prevent this.
+7. **Compile-time defaults** — baked into the binary (see
+   `src/types.hpp` for `kEnforceSignal*`, `kSigkillEscalation*Default`,
+   `AEGIS_VERSION_STRING`, etc.). These are the final fallback.
+
+This ordering is security-sensitive: **break-glass and emergency-disable
+can only relax enforcement, never tighten it.** If you change any of these
+knobs out-of-band, re-run `aegisbpf health --require-enforce` to confirm
+the effective posture before declaring the node ready.
+
 ## 3) Kubernetes deployment guidance (reference)
 
 If deploying in Kubernetes, use a DaemonSet with host mounts for bpffs and

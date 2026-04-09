@@ -127,6 +127,47 @@ Manage the cgroup allowlist.
 **aegisbpf allow list**
 :   List all cgroup IDs in the allowlist.
 
+### network
+
+Manage network deny rules (IPv4/IPv6 addresses, CIDR ranges, ports,
+IP:port tuples). Rules are enforced at LSM socket hooks.
+
+**aegisbpf network deny add** [**--ip** *IP*] [**--cidr** *CIDR*] [**--port** *PORT* [**--protocol** tcp|udp|any] [**--direction** egress|bind|both]] [**--ip-port** *IP:PORT[:PROTO]*]
+:   Add a network deny rule. Address families are auto-detected; ports
+    default to all protocols and egress direction.
+
+**aegisbpf network deny del** [*same selectors as add*]
+:   Remove a previously added rule.
+
+**aegisbpf network deny list**
+:   List all currently loaded network deny rules.
+
+**aegisbpf network deny clear**
+:   Remove every network deny rule from the BPF maps.
+
+**aegisbpf network stats**
+:   Show per-hook block counters (connect/bind/listen/accept/sendmsg/recvmsg)
+    and ring-buffer drops for the network pipeline.
+
+### cgroup
+
+Cgroup-scoped deny rules (v6+ policy format). Rules target a specific
+cgroup by path or numeric cgid and apply only to processes inside that
+cgroup. See `docs/POLICY.md` for the `[cgroup_deny_*]` sections.
+
+**aegisbpf cgroup deny add** **--cgroup** *PATH*|*cgid:N* {**--inode** *DEV:INO* | **--ip** *IP* | **--port** *PORT* [**--protocol** tcp|udp|any] [**--direction** egress|bind|both]}
+:   Add a cgroup-scoped deny rule. Exactly one of `--inode`, `--ip`, or
+    `--port` must be specified.
+
+**aegisbpf cgroup deny del** [*same selectors as add*]
+:   Remove a previously added cgroup-scoped rule.
+
+**aegisbpf cgroup deny list**
+:   List all loaded cgroup-scoped deny rules.
+
+**aegisbpf cgroup deny clear**
+:   Remove every cgroup-scoped deny rule.
+
 ### policy
 
 Manage policy files.
@@ -156,6 +197,34 @@ Manage policy files.
 
 **aegisbpf policy rollback**
 :   Restore the previously applied policy.
+
+**aegisbpf policy sign** *POLICY.CONF* **--key** *PRIVATE.KEY* **--output** *POLICY.SIGNED*
+:   Produce an Ed25519-signed policy bundle.
+
+### keys
+
+Manage the Ed25519 public key store used to verify signed policy
+bundles. Keys live under `/etc/aegisbpf/keys/` (override with
+`AEGIS_KEYS_DIR`).
+
+**aegisbpf keys list**
+:   List all trusted signing keys, one fingerprint per line.
+
+**aegisbpf keys add** *PUBKEY.PUB*
+:   Install a public key into the trust store.
+
+### survival
+
+Inspect the survival allowlist, a BPF map of inodes that must always
+remain allowed (agent binary, libc, systemd, and friends). Populated at
+startup so the daemon never accidentally self-denies.
+
+**aegisbpf survival list**
+:   List every inode currently pinned in the survival allowlist.
+
+**aegisbpf survival verify**
+:   Re-resolve and confirm the agent's critical binaries are present in
+    the allowlist. Returns non-zero if any entry is missing.
 
 ### stats
 
@@ -293,6 +362,17 @@ Shows:
 
 **--json**
 :   Emit a machine-readable diagnostics payload with advice entries.
+
+### probe
+
+Run the kernel feature probe and write a capability report to
+`/var/lib/aegisbpf/capabilities.json` (override with
+`AEGIS_CAPABILITIES_REPORT_PATH`). The report is used by `doctor`,
+the Helm posture sidecar, and the operator to decide whether a node is
+enforce-capable.
+
+**aegisbpf probe**
+:   Refresh the capability report and print its contents.
 
 ### explain
 
