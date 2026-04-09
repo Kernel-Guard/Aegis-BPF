@@ -266,7 +266,7 @@ bool RuleEngine::evaluate_condition_net(const RuleCondition& cond, const NetBloc
         case ConditionType::PortEquals:
             return ev.remote_port == static_cast<uint16_t>(cond.numeric);
         case ConditionType::IpEquals: {
-            if (ev.family == 2) { /* AF_INET */
+            if (ev.family == kFamilyIPv4) {
                 char buf[INET_ADDRSTRLEN] = {};
                 inet_ntop(AF_INET, &ev.remote_ipv4, buf, sizeof(buf));
                 return cond.value == buf;

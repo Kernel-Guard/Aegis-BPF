@@ -278,6 +278,8 @@ int dispatch_cli(int argc, char** argv)
     }
 
     std::string cmd = argv[1];
+    if (cmd == "--version" || cmd == "-V" || cmd == "version")
+        return print_version();
     if (cmd == "run")
         return dispatch_run_command(argc, argv, argv[0]);
     if (cmd == "block")

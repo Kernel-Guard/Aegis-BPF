@@ -317,9 +317,12 @@ void CgroupPathCache::rebuild_locked()
                 }
             }
         }
-    } catch (const std::exception&) { // NOLINT(bugprone-empty-catch)
+    } catch (const std::exception& e) {
         // Partial map is better than no map — cgroup walk can fail
-        // on permission errors or race conditions.
+        // on permission errors or race conditions. Log at debug so
+        // operators can correlate missing cgroup resolutions with
+        // the walk failure, but never escalate (best-effort cache).
+        logger().log(SLOG_DEBUG("cgroup path cache walk aborted").field("error", e.what()));
     }
 }
 

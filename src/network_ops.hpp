@@ -18,7 +18,7 @@ class BpfState;
 
 // Network map loading and initialization
 Result<void> load_network_maps(BpfState& state, bool reuse_pins);
-Result<void> pin_network_maps(BpfState& state);
+Result<void> pin_network_maps(const BpfState& state);
 Result<void> attach_network_hooks(BpfState& state, bool lsm_enabled);
 
 // IPv4 deny operations

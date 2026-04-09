@@ -200,12 +200,12 @@ void OtlpExporter::export_net_block(const NetBlockEvent& ev, uint32_t event_type
 
     std::string remote_ip;
     char buf[INET6_ADDRSTRLEN] = {};
-    if (ev.family == 2) {
+    if (ev.family == kFamilyIPv4) {
         struct in_addr addr {};
         addr.s_addr = ev.remote_ipv4;
         if (inet_ntop(AF_INET, &addr, buf, sizeof(buf)))
             remote_ip = buf;
-    } else if (ev.family == 10) {
+    } else if (ev.family == kFamilyIPv6) {
         if (inet_ntop(AF_INET6, ev.remote_ipv6, buf, sizeof(buf)))
             remote_ip = buf;
     }
@@ -215,8 +215,9 @@ void OtlpExporter::export_net_block(const NetBlockEvent& ev, uint32_t event_type
           << otlp_attr_int("aegis.ppid", ev.ppid) << "," << otlp_attr("aegis.comm", comm_str) << ","
           << otlp_attr("aegis.exec_id", exec_id) << "," << otlp_attr("aegis.action", action_str) << ","
           << otlp_attr("aegis.direction", direction) << "," << otlp_attr("aegis.rule_type", rule_type_str) << ","
-          << otlp_attr("aegis.family", ev.family == 2 ? "ipv4" : "ipv6") << ","
-          << otlp_attr("aegis.protocol", ev.protocol == 6 ? "tcp" : (ev.protocol == 17 ? "udp" : "other"));
+          << otlp_attr("aegis.family", ev.family == kFamilyIPv4 ? "ipv4" : "ipv6") << ","
+          << otlp_attr("aegis.protocol",
+                       ev.protocol == kProtoTCP ? "tcp" : (ev.protocol == kProtoUDP ? "udp" : "other"));
 
     if (!remote_ip.empty()) {
         attrs << "," << otlp_attr("aegis.remote_ip", remote_ip) << ","

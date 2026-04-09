@@ -55,7 +55,9 @@ bool parse_cidr_v4(const std::string& cidr_str, uint32_t& ip_be, uint8_t& prefix
             return false;
         }
         prefix_len = static_cast<uint8_t>(prefix);
-    } catch (...) {
+    } catch (const std::invalid_argument&) {
+        return false;
+    } catch (const std::out_of_range&) {
         return false;
     }
 
@@ -82,7 +84,9 @@ bool parse_cidr_v6(const std::string& cidr_str, Ipv6Key& ip, uint8_t& prefix_len
             return false;
         }
         prefix_len = static_cast<uint8_t>(prefix);
-    } catch (...) {
+    } catch (const std::invalid_argument&) {
+        return false;
+    } catch (const std::out_of_range&) {
         return false;
     }
 
@@ -361,7 +365,7 @@ Result<void> load_network_maps(BpfState& state, bool reuse_pins)
     return {};
 }
 
-Result<void> pin_network_maps(BpfState& state)
+Result<void> pin_network_maps(const BpfState& state)
 {
     if (!state.deny_ipv4 && !state.deny_ipv6) {
         return {}; // Network maps not loaded

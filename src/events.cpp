@@ -132,8 +132,10 @@ void journal_send_net_block(const NetBlockEvent& ev, const std::string& payload,
                             const std::string& event_type, const std::string& remote_ip)
 {
     int priority = LOG_WARNING; // Network blocks are warnings by default
-    std::string protocol = (ev.protocol == 6) ? "tcp" : (ev.protocol == 17) ? "udp" : std::to_string(ev.protocol);
-    std::string family = (ev.family == 2) ? "ipv4" : "ipv6";
+    std::string protocol = (ev.protocol == kProtoTCP)   ? "tcp"
+                           : (ev.protocol == kProtoUDP) ? "udp"
+                                                        : std::to_string(ev.protocol);
+    std::string family = (ev.family == kFamilyIPv4) ? "ipv4" : "ipv6";
     std::string direction = (ev.direction == 0)   ? "egress"
                             : (ev.direction == 1) ? "bind"
                             : (ev.direction == 2) ? "listen"
@@ -314,9 +316,9 @@ static std::string format_ipv6_addr(const uint8_t ip[16])
 static std::string protocol_to_string(uint8_t protocol)
 {
     switch (protocol) {
-        case 6:
+        case kProtoTCP:
             return "tcp";
-        case 17:
+        case kProtoUDP:
             return "udp";
         default:
             return std::to_string(protocol);
@@ -369,15 +371,15 @@ void print_net_block_event(const NetBlockEvent& ev)
     oss << ",\"cgid\":" << ev.cgid << ",\"cgroup_path\":\"" << json_escape(cgpath) << "\"";
 
     // Network-specific fields
-    oss << ",\"family\":\"" << (ev.family == 2 ? "ipv4" : "ipv6") << "\"";
+    oss << ",\"family\":\"" << (ev.family == kFamilyIPv4 ? "ipv4" : "ipv6") << "\"";
     oss << ",\"protocol\":\"" << protocol_to_string(ev.protocol) << "\"";
     oss << ",\"direction\":\"" << direction << "\"";
 
     if (ev.direction == 0 || ev.direction == 3 || ev.direction == 4 || ev.direction == 5) {
         // Outbound/accepted socket events - show remote address
-        if (ev.family == 2) {
+        if (ev.family == kFamilyIPv4) {
             oss << ",\"remote_ip\":\"" << format_ipv4_addr(ev.remote_ipv4) << "\"";
-        } else if (ev.family == 10) {
+        } else if (ev.family == kFamilyIPv6) {
             oss << ",\"remote_ip\":\"" << format_ipv6_addr(ev.remote_ipv6) << "\"";
         }
         oss << ",\"remote_port\":" << ev.remote_port;
@@ -400,9 +402,9 @@ void print_net_block_event(const NetBlockEvent& ev)
 #ifdef HAVE_SYSTEMD
     if (sink_wants_journald(g_event_sink)) {
         std::string remote_ip;
-        if (ev.family == 2) {
+        if (ev.family == kFamilyIPv4) {
             remote_ip = format_ipv4_addr(ev.remote_ipv4);
-        } else if (ev.family == 10) {
+        } else if (ev.family == kFamilyIPv6) {
             remote_ip = format_ipv6_addr(ev.remote_ipv6);
         }
         journal_send_net_block(ev, payload, cgpath, comm, exec_id, parent_exec_id, event_type, remote_ip);

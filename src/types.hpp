@@ -78,6 +78,18 @@ inline constexpr uint32_t kSigkillEscalationWindowSecondsDefault = 30;
 inline constexpr bool kSigkillEnforcementCompiledIn = (AEGIS_ENABLE_SIGKILL_ENFORCEMENT != 0);
 inline constexpr uint8_t kRuleFlagDenyAlways = 1;
 inline constexpr uint8_t kRuleFlagProtectByVerifiedExec = 2;
+// Network protocol numbers (matches IPPROTO_* from netinet/in.h but avoids
+// pulling that header into ABI-adjacent code). Keep these in sync with the
+// BPF-side values in aegis_net.bpf.h.
+inline constexpr uint8_t kProtoAny = 0;
+inline constexpr uint8_t kProtoTCP = 6;
+inline constexpr uint8_t kProtoUDP = 17;
+
+// Address families (matches AF_INET / AF_INET6). Duplicated from <sys/socket.h>
+// for the same reason as the protocol constants above.
+inline constexpr uint8_t kFamilyIPv4 = 2;
+inline constexpr uint8_t kFamilyIPv6 = 10;
+
 inline constexpr uint8_t kExecIdentityFlagAllowlistEnforce = 1u << 0;
 inline constexpr uint8_t kExecIdentityFlagProtectConnect = 1u << 1;
 inline constexpr uint8_t kExecIdentityFlagProtectFiles = 1u << 2;

@@ -143,7 +143,9 @@ int cmd_policy_validate(const std::string& path, bool verbose)
             if (!policy.network.deny_ports.empty()) {
                 std::cout << "\nNetwork deny ports:\n";
                 for (const auto& pr : policy.network.deny_ports) {
-                    std::string proto = (pr.protocol == 6) ? "tcp" : (pr.protocol == 17) ? "udp" : "any";
+                    std::string proto = (pr.protocol == kProtoTCP)   ? "tcp"
+                                        : (pr.protocol == kProtoUDP) ? "udp"
+                                                                     : "any";
                     std::string dir = (pr.direction == 0) ? "egress" : (pr.direction == 1) ? "bind" : "both";
                     std::cout << "  - port " << pr.port << " (" << proto << ", " << dir << ")\n";
                 }
@@ -241,6 +243,16 @@ int cmd_policy_apply_signed(const std::string& bundle_path, bool require_signatu
             logger().log(SLOG_ERROR("Failed to create temp policy file").error_code(errno));
             return fail("Failed to create temp policy file");
         }
+
+        /* RAII guard: unlink the temp file on every exit path below,
+         * including future early-returns that a reader might add between
+         * here and the apply call. The fd is closed separately because
+         * we need it open only for the write loop. */
+        struct TempPathGuard {
+            const char* path;
+            ~TempPathGuard() { if (path) { std::remove(path); } }
+        } temp_guard{temp_path};
+
         {
             const auto& content_ref = bundle.policy_content;
             ssize_t written = 0;
@@ -249,7 +261,6 @@ int cmd_policy_apply_signed(const std::string& bundle_path, bool require_signatu
                 ssize_t n = ::write(temp_fd, content_ref.data() + written, total - static_cast<size_t>(written));
                 if (n < 0) {
                     ::close(temp_fd);
-                    std::remove(temp_path);
                     logger().log(SLOG_ERROR("Failed to write temp policy file").error_code(errno));
                     return fail("Failed to write temp policy file");
                 }
@@ -259,7 +270,6 @@ int cmd_policy_apply_signed(const std::string& bundle_path, bool require_signatu
         }
 
         auto apply_result = policy_apply(temp_path, false, bundle.policy_sha256, "", true, trace_id);
-        std::remove(temp_path);
         if (!apply_result) {
             return fail(apply_result.error().to_string());
         }
