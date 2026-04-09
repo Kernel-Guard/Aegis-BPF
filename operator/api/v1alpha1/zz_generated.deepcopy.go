@@ -136,6 +136,11 @@ func (in *AegisPolicySpec) DeepCopyInto(out *AegisPolicySpec) {
 		*out = new(PolicySelector)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.WorkloadSelector != nil {
+		in, out := &in.WorkloadSelector, &out.WorkloadSelector
+		*out = new(WorkloadSelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.FileRules != nil {
 		in, out := &in.FileRules, &out.FileRules
 		*out = new(FileRules)
@@ -191,6 +196,36 @@ func (in *PolicySelector) DeepCopy() *PolicySelector {
 		return nil
 	}
 	out := new(PolicySelector)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto copies WorkloadSelector.
+func (in *WorkloadSelector) DeepCopyInto(out *WorkloadSelector) {
+	*out = *in
+	if in.PodSelector != nil {
+		in, out := &in.PodSelector, &out.PodSelector
+		*out = new(metav1.LabelSelector)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.NamespaceSelector != nil {
+		in, out := &in.NamespaceSelector, &out.NamespaceSelector
+		*out = new(metav1.LabelSelector)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.MatchNamespaceNames != nil {
+		in, out := &in.MatchNamespaceNames, &out.MatchNamespaceNames
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+}
+
+// DeepCopy returns a deep copy of WorkloadSelector.
+func (in *WorkloadSelector) DeepCopy() *WorkloadSelector {
+	if in == nil {
+		return nil
+	}
+	out := new(WorkloadSelector)
 	in.DeepCopyInto(out)
 	return out
 }

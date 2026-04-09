@@ -67,8 +67,19 @@ type AegisPolicySpec struct {
 	Mode string `json:"mode"`
 
 	// Selector restricts which workloads this policy applies to.
+	//
+	// Deprecated: use WorkloadSelector instead. If both Selector and
+	// WorkloadSelector are set, WorkloadSelector takes precedence and a
+	// Deprecated condition is recorded on the policy status.
 	// +optional
 	Selector *PolicySelector `json:"selector,omitempty"`
+
+	// WorkloadSelector selects the workloads this policy applies to using
+	// the expressive Kubernetes LabelSelector model (matchLabels +
+	// matchExpressions), plus a separate namespace selector. Replaces the
+	// legacy `selector` field; if both are set, WorkloadSelector wins.
+	// +optional
+	WorkloadSelector *WorkloadSelector `json:"workloadSelector,omitempty"`
 
 	// FileRules defines file access deny and protect rules.
 	// +optional
@@ -88,6 +99,10 @@ type AegisPolicySpec struct {
 }
 
 // PolicySelector restricts which workloads a policy applies to.
+//
+// Deprecated: use WorkloadSelector instead. This struct is retained so
+// existing v1alpha1 YAMLs continue to parse, but new policies should use
+// WorkloadSelector which supports LabelSelector matchExpressions.
 type PolicySelector struct {
 	// MatchLabels selects pods by label.
 	// +optional
@@ -97,6 +112,61 @@ type PolicySelector struct {
 	// +optional
 	MatchNamespaces []string `json:"matchNamespaces,omitempty"`
 }
+
+// WorkloadSelector selects the pods a policy applies to using the
+// standard Kubernetes LabelSelector model. All fields are AND-ed. A nil
+// or empty WorkloadSelector matches everything in the policy's scope
+// (the policy's own namespace for AegisPolicy, or cluster-wide for
+// AegisClusterPolicy).
+//
+// For namespaced AegisPolicy resources, NamespaceSelector and
+// MatchNamespaceNames must be empty or reference only the policy's own
+// namespace; cross-namespace selection from a namespaced policy is
+// rejected by the admission webhook.
+type WorkloadSelector struct {
+	// PodSelector selects pods within the matched namespaces. Supports
+	// both matchLabels and matchExpressions (In, NotIn, Exists,
+	// DoesNotExist), mirroring Kubernetes NetworkPolicy semantics.
+	// +optional
+	PodSelector *metav1.LabelSelector `json:"podSelector,omitempty"`
+
+	// NamespaceSelector restricts which namespaces the PodSelector runs
+	// against. An empty NamespaceSelector matches all namespaces (subject
+	// to the CRD scope — namespaced AegisPolicy is always limited to its
+	// own namespace). Supports matchLabels and matchExpressions.
+	// +optional
+	NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector,omitempty"`
+
+	// MatchNamespaceNames is a convenience shortcut equivalent to a
+	// NamespaceSelector with matchExpressions:
+	//   kubernetes.io/metadata.name In [<names>]
+	// Kept because every competing project ships a by-name namespace
+	// selector and users expect it.
+	// +optional
+	MatchNamespaceNames []string `json:"matchNamespaceNames,omitempty"`
+}
+
+// RuleAction is the per-rule enforcement action.
+//
+// Allow and Block are supported in v0.5.0. Audit is reserved for a future
+// release and is rejected by the admission webhook today, because the
+// daemon's INI format encodes action in section names (`[deny_*]` vs
+// `[allow_*]`) and mode is policy-wide; per-rule audit requires a daemon
+// change that is deliberately out of scope for this release.
+//
+// +kubebuilder:validation:Enum=Allow;Block
+type RuleAction string
+
+const (
+	// RuleActionAllow explicitly permits a rule's target. Within the
+	// merged cluster policy, Allow takes precedence over Block for the
+	// same literal target (documented in docs/POLICY_SEMANTICS.md).
+	RuleActionAllow RuleAction = "Allow"
+
+	// RuleActionBlock denies the rule's target. This is the default when
+	// `action` is unset on a rule.
+	RuleActionBlock RuleAction = "Block"
+)
 
 // FileRules defines file access control rules.
 type FileRules struct {
@@ -111,6 +181,17 @@ type FileRules struct {
 
 // FileRule identifies a file by path or inode.
 type FileRule struct {
+	// Action is the enforcement action for this rule. Defaults to Block
+	// if unset, which preserves backwards compatibility with v0.4.x
+	// policies that had no per-rule action field.
+	//
+	// Inode-based targets only support Action=Block today (the daemon
+	// has no [allow_inode] section). The webhook rejects Action=Allow
+	// with a non-empty Inode.
+	// +kubebuilder:default=Block
+	// +optional
+	Action RuleAction `json:"action,omitempty"`
+
 	// Path is the file path to match.
 	// +optional
 	Path string `json:"path,omitempty"`
@@ -128,9 +209,16 @@ type NetworkRules struct {
 	Deny []NetworkRule `json:"deny,omitempty"`
 }
 
-// NetworkRule identifies a network destination to deny.
+// NetworkRule identifies a network destination to control.
 type NetworkRule struct {
-	// IP is an exact IP address to deny.
+	// Action is the enforcement action for this rule. Defaults to Block
+	// if unset. Allow rules take precedence over Block rules for the
+	// same literal target when multiple policies are merged.
+	// +kubebuilder:default=Block
+	// +optional
+	Action RuleAction `json:"action,omitempty"`
+
+	// IP is an exact IP address to match.
 	// +optional
 	IP string `json:"ip,omitempty"`
 
@@ -226,6 +314,36 @@ const (
 	ReasonBPFLSMUnavailable       = "BPFLSMUnavailable"
 	ReasonIMAAppraisalUnavailable = "IMAAppraisalUnavailable"
 	ReasonNoMatchingWorkloads     = "NoMatchingWorkloads"
+
+	// ReasonLegacySelectorInUse is set on a Deprecated condition when a
+	// policy uses the old `spec.selector` field instead of the new
+	// `spec.workloadSelector`. The policy still reconciles normally; the
+	// condition is informational.
+	ReasonLegacySelectorInUse = "LegacySelectorInUse"
+
+	// ReasonInvalidSelectorScope is set when a namespaced AegisPolicy
+	// tries to select workloads outside its own namespace. Rejected by
+	// the admission webhook; reconciler guards against it as defence in
+	// depth.
+	ReasonInvalidSelectorScope = "InvalidSelectorScope"
+
+	// ReasonAllowBlockCollision is set when a single spec contains both
+	// Allow and Block rules for the same literal target (e.g. the same
+	// path listed twice with different actions). Rejected by the
+	// admission webhook.
+	ReasonAllowBlockCollision = "AllowBlockCollision"
+)
+
+// Non-standard condition types used by v0.5.0 policies.
+//
+// These are in addition to the standard Ready/PolicyValid/EnforceCapable/
+// Degraded set above, not replacements.
+const (
+	// ConditionDeprecated is True when a policy uses a deprecated API
+	// surface (currently: the legacy `spec.selector` field). The reason
+	// will be one of the Reason* constants above (e.g.
+	// ReasonLegacySelectorInUse).
+	ConditionDeprecated = "Deprecated"
 )
 
 // AegisPolicyStatus defines the observed state of an Aegis policy.

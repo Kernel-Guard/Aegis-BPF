@@ -226,3 +226,158 @@ func TestMergePoliciesDeterministic(t *testing.T) {
 		t.Error("same merged input should produce same INI output")
 	}
 }
+
+func TestTranslateMixedActions(t *testing.T) {
+	spec := v1alpha1.AegisPolicySpec{
+		Mode: "enforce",
+		FileRules: &v1alpha1.FileRules{
+			Deny: []v1alpha1.FileRule{
+				{Path: "/etc/shadow"}, // unset action defaults to Block
+				{Path: "/usr/bin/curl", Action: v1alpha1.RuleActionAllow},
+				{Path: "/usr/bin/xmrig", Action: v1alpha1.RuleActionBlock},
+			},
+		},
+		NetworkRules: &v1alpha1.NetworkRules{
+			Deny: []v1alpha1.NetworkRule{
+				{IP: "10.0.0.1"}, // default Block
+				{IP: "10.0.0.2", Action: v1alpha1.RuleActionAllow},
+			},
+		},
+	}
+	result, err := TranslateToINI(spec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Block-action and default-action paths land in [deny_path].
+	if !strings.Contains(result.INI, "[deny_path]") {
+		t.Error("missing [deny_path] section")
+	}
+	if !strings.Contains(result.INI, "/etc/shadow") {
+		t.Error("missing default-block path entry")
+	}
+	if !strings.Contains(result.INI, "/usr/bin/xmrig") {
+		t.Error("missing explicit-block path entry")
+	}
+
+	// Allow-action paths land in [allow_path].
+	if !strings.Contains(result.INI, "[allow_path]") {
+		t.Error("missing [allow_path] section")
+	}
+	if !strings.Contains(result.INI, "/usr/bin/curl") {
+		t.Error("missing allow path entry")
+	}
+
+	// Network rules: [deny_ip] for default, [allow_ip] for explicit Allow.
+	if !strings.Contains(result.INI, "[deny_ip]") || !strings.Contains(result.INI, "10.0.0.1") {
+		t.Error("missing deny_ip entry for default-Block rule")
+	}
+	if !strings.Contains(result.INI, "[allow_ip]") || !strings.Contains(result.INI, "10.0.0.2") {
+		t.Error("missing allow_ip entry for explicit-Allow rule")
+	}
+}
+
+func TestTranslateDefaultsToBlock(t *testing.T) {
+	spec := v1alpha1.AegisPolicySpec{
+		Mode: "enforce",
+		FileRules: &v1alpha1.FileRules{
+			Deny: []v1alpha1.FileRule{{Path: "/foo"}},
+		},
+	}
+	result, err := TranslateToINI(spec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result.INI, "[deny_path]") {
+		t.Error("rule with no action should emit as [deny_path]")
+	}
+	if strings.Contains(result.INI, "[allow_path]") {
+		t.Error("rule with no action should not emit [allow_path]")
+	}
+}
+
+func TestTranslateDeterministicOrdering(t *testing.T) {
+	spec := v1alpha1.AegisPolicySpec{
+		Mode: "enforce",
+		FileRules: &v1alpha1.FileRules{
+			Deny: []v1alpha1.FileRule{
+				{Path: "/z"},
+				{Path: "/a"},
+				{Path: "/m"},
+			},
+		},
+	}
+	r1, _ := TranslateToINI(spec)
+	r2, _ := TranslateToINI(spec)
+	if r1.INI != r2.INI {
+		t.Error("translator must produce byte-identical output for the same spec")
+	}
+	aIdx := strings.Index(r1.INI, "/a")
+	mIdx := strings.Index(r1.INI, "/m")
+	zIdx := strings.Index(r1.INI, "/z")
+	if aIdx < 0 || mIdx < 0 || zIdx < 0 {
+		t.Fatalf("missing entries: a=%d m=%d z=%d", aIdx, mIdx, zIdx)
+	}
+	if !(aIdx < mIdx && mIdx < zIdx) {
+		t.Errorf("entries not sorted alphabetically: a=%d m=%d z=%d", aIdx, mIdx, zIdx)
+	}
+}
+
+func TestMergePoliciesAllowOverridesDeny(t *testing.T) {
+	// Policy A denies both /usr/bin/curl and /usr/bin/xmrig.
+	denyPolicy := TranslateResult{
+		INI:    "version=5\n[deny_path]\n/usr/bin/curl\n/usr/bin/xmrig\n\n",
+		SHA256: "a",
+	}
+	// Policy B allows /usr/bin/curl. After merge, curl should disappear
+	// from [deny_path] but xmrig should remain.
+	allowPolicy := TranslateResult{
+		INI:    "version=5\n[allow_path]\n/usr/bin/curl\n\n",
+		SHA256: "b",
+	}
+	merged := MergePolicies([]TranslateResult{denyPolicy, allowPolicy})
+
+	if !strings.Contains(merged.INI, "[allow_path]") {
+		t.Error("merged INI missing [allow_path]")
+	}
+	if !strings.Contains(merged.INI, "/usr/bin/xmrig") {
+		t.Error("non-overridden deny entry should remain")
+	}
+	// Locate the [deny_path] section and assert curl is NOT inside it.
+	denyIdx := strings.Index(merged.INI, "[deny_path]")
+	if denyIdx < 0 {
+		t.Fatal("[deny_path] section missing — should still contain /usr/bin/xmrig")
+	}
+	rest := merged.INI[denyIdx:]
+	nextIdx := strings.Index(rest[1:], "[")
+	var denySection string
+	if nextIdx == -1 {
+		denySection = rest
+	} else {
+		denySection = rest[:nextIdx+1]
+	}
+	if strings.Contains(denySection, "/usr/bin/curl") {
+		t.Error("/usr/bin/curl should be removed from [deny_path] when [allow_path] overrides it")
+	}
+}
+
+func TestMergePoliciesAllowEmptiesSection(t *testing.T) {
+	// Policy A denies /usr/bin/curl (only entry). Policy B allows it.
+	// The deny_path section should disappear from the merged output.
+	denyPolicy := TranslateResult{
+		INI:    "version=5\n[deny_path]\n/usr/bin/curl\n\n",
+		SHA256: "a",
+	}
+	allowPolicy := TranslateResult{
+		INI:    "version=5\n[allow_path]\n/usr/bin/curl\n\n",
+		SHA256: "b",
+	}
+	merged := MergePolicies([]TranslateResult{denyPolicy, allowPolicy})
+
+	if strings.Contains(merged.INI, "[deny_path]") {
+		t.Error("[deny_path] section should be omitted when fully overridden by [allow_path]")
+	}
+	if !strings.Contains(merged.INI, "[allow_path]") {
+		t.Error("[allow_path] should still be present")
+	}
+}
