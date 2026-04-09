@@ -43,7 +43,10 @@ bool parse_port_rule(const std::string& str, PortRule& rule)
     }
     parts.push_back(current);
 
-    if (parts.empty() || parts[0].empty()) {
+    /* `parts` always has at least one element after the push_back above,
+     * so `parts.empty()` is dead (cppcheck knownConditionTrueFalse). Only
+     * `parts[0].empty()` is a real check — e.g. input ":tcp:egress". */
+    if (parts[0].empty()) {
         return false;
     }
 
@@ -196,8 +199,15 @@ Result<Policy> parse_policy_file(const std::string& path, PolicyIssues& issues)
                 issues.errors.push_back("line " + std::to_string(line_no) + ": deny_path is too long");
                 continue;
             }
+            /* Reject relative paths outright: the agent's working directory
+             * is not a stable anchor (systemd sets cwd=/, container runtimes
+             * may set cwd to the image WORKDIR), so a relative deny_path
+             * silently misses any file a user expected it to match. Better
+             * to fail loading the policy than silently enforce nothing. */
             if (!trimmed.empty() && trimmed.front() != '/') {
-                issues.warnings.push_back("line " + std::to_string(line_no) + ": deny_path is relative");
+                issues.errors.push_back("line " + std::to_string(line_no) +
+                                        ": deny_path must be an absolute path (got '" + trimmed + "')");
+                continue;
             }
             if (deny_path_seen.insert(trimmed).second) {
                 policy.deny_paths.push_back(trimmed);
@@ -211,7 +221,9 @@ Result<Policy> parse_policy_file(const std::string& path, PolicyIssues& issues)
                 continue;
             }
             if (!trimmed.empty() && trimmed.front() != '/') {
-                issues.warnings.push_back("line " + std::to_string(line_no) + ": protect_path is relative");
+                issues.errors.push_back("line " + std::to_string(line_no) +
+                                        ": protect_path must be an absolute path (got '" + trimmed + "')");
+                continue;
             }
             if (protect_path_seen.insert(trimmed).second) {
                 policy.protect_paths.push_back(trimmed);

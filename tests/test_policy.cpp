@@ -401,8 +401,11 @@ version=1
     EXPECT_EQ(result->deny_paths.size(), 2u);
 }
 
-TEST_F(PolicyTest, RelativePathWarning)
+TEST_F(PolicyTest, RelativePathRejected)
 {
+    /* Relative paths in deny_path are a foot-gun: the agent's cwd is not
+     * a stable anchor, so the rule silently matches nothing. Reject
+     * them at parse time so users see the error loudly. */
     std::string content = R"(
 version=1
 
@@ -413,8 +416,8 @@ relative/path/test
     PolicyIssues issues;
     auto result = parse_policy_file(path, issues);
 
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(issues.has_warnings());
+    EXPECT_FALSE(result);
+    EXPECT_TRUE(issues.has_errors());
 }
 
 TEST_F(PolicyTest, InvalidInodeFormat)
