@@ -75,3 +75,24 @@ func markEnforceCapableUnknown(status *v1alpha1.AegisPolicyStatus, gen int64) {
 		"Per-node enforcement capability is not yet observed by the operator; "+
 			"check daemon logs and `aegisbpf posture` on each node")
 }
+
+// markLegacySelectorDeprecated flips Deprecated=True with the
+// LegacySelectorInUse reason. The policy still reconciles normally; the
+// condition is purely informational so dashboards can flag old YAMLs that
+// should migrate to spec.workloadSelector.
+func markLegacySelectorDeprecated(status *v1alpha1.AegisPolicyStatus, gen int64) {
+	setCondition(status, gen,
+		v1alpha1.ConditionDeprecated, metav1.ConditionTrue,
+		v1alpha1.ReasonLegacySelectorInUse,
+		"spec.selector is deprecated; migrate to spec.workloadSelector for matchExpressions support")
+}
+
+// clearDeprecated flips Deprecated=False. Called when a previously legacy
+// policy has been re-saved without spec.selector, so the condition stops
+// nagging.
+func clearDeprecated(status *v1alpha1.AegisPolicyStatus, gen int64) {
+	setCondition(status, gen,
+		v1alpha1.ConditionDeprecated, metav1.ConditionFalse,
+		v1alpha1.ReasonPolicyApplied,
+		"spec.selector is not in use")
+}

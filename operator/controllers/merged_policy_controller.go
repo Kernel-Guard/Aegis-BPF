@@ -19,6 +19,7 @@ import (
 
 	v1alpha1 "github.com/ErenAri/aegis-operator/api/v1alpha1"
 	"github.com/ErenAri/aegis-operator/internal/policy"
+	"github.com/ErenAri/aegis-operator/internal/selector"
 )
 
 const (
@@ -70,7 +71,12 @@ func (r *MergedPolicyReconciler) Reconcile(ctx context.Context, _ ctrl.Request) 
 		if cp.DeletionTimestamp != nil {
 			continue
 		}
-		if !r.selectorApplies(ctx, cp.Spec.Selector) {
+		matches, err := selector.Matches(ctx, r.Client, cp.Spec, selector.Scope{})
+		if err != nil {
+			logger.Error(err, "Failed to evaluate cluster policy selector", "name", cp.Name)
+			continue
+		}
+		if !matches {
 			continue
 		}
 		result, err := policy.TranslateToINI(cp.Spec)
@@ -96,7 +102,13 @@ func (r *MergedPolicyReconciler) Reconcile(ctx context.Context, _ ctrl.Request) 
 		if np.DeletionTimestamp != nil {
 			continue
 		}
-		if !r.selectorApplies(ctx, np.Spec.Selector) {
+		matches, err := selector.Matches(ctx, r.Client, np.Spec, selector.Scope{Namespace: np.Namespace})
+		if err != nil {
+			logger.Error(err, "Failed to evaluate policy selector",
+				"namespace", np.Namespace, "name", np.Name)
+			continue
+		}
+		if !matches {
 			continue
 		}
 		result, err := policy.TranslateToINI(np.Spec)
@@ -182,36 +194,6 @@ func (r *MergedPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&v1alpha1.AegisPolicy{}, &handler.EnqueueRequestForObject{}).
 		Watches(&v1alpha1.AegisClusterPolicy{}, &handler.EnqueueRequestForObject{}).
 		Complete(r)
-}
-
-// selectorApplies checks whether the policy's selector is satisfied.
-// A nil or empty selector applies to all workloads.
-func (r *MergedPolicyReconciler) selectorApplies(ctx context.Context, selector *v1alpha1.PolicySelector) bool {
-	if selector == nil {
-		return true
-	}
-
-	// Namespace filtering: if matchNamespaces is set, verify at least one exists.
-	if len(selector.MatchNamespaces) > 0 {
-		for _, ns := range selector.MatchNamespaces {
-			var namespace corev1.Namespace
-			if err := r.Get(ctx, types.NamespacedName{Name: ns}, &namespace); err == nil {
-				return true
-			}
-		}
-		return false
-	}
-
-	// Label filtering: if matchLabels is set, check for pods with matching labels.
-	if len(selector.MatchLabels) > 0 {
-		var pods corev1.PodList
-		if err := r.List(ctx, &pods, client.MatchingLabels(selector.MatchLabels)); err == nil {
-			return len(pods.Items) > 0
-		}
-		return false
-	}
-
-	return true
 }
 
 func (r *MergedPolicyReconciler) deleteMergedConfigMap(ctx context.Context) (ctrl.Result, error) {

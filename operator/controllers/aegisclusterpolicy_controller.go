@@ -82,6 +82,11 @@ func (r *AegisClusterPolicyReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	markPolicyValid(&acp.Status, acp.Generation)
 	markEnforceCapableUnknown(&acp.Status, acp.Generation)
+	if acp.Spec.Selector != nil {
+		markLegacySelectorDeprecated(&acp.Status, acp.Generation)
+	} else {
+		clearDeprecated(&acp.Status, acp.Generation)
+	}
 
 	logger.Info("Translated cluster policy",
 		"name", acp.Name,
