@@ -93,6 +93,31 @@ func TestMarkEnforceCapableUnknown_isUnknownNotFalse(t *testing.T) {
 	}
 }
 
+func TestMarkLegacySelectorDeprecated_setsConditionTrue(t *testing.T) {
+	status := &v1alpha1.AegisPolicyStatus{}
+	markLegacySelectorDeprecated(status, 4)
+
+	c := findCondition(status, v1alpha1.ConditionDeprecated)
+	if c == nil || c.Status != metav1.ConditionTrue {
+		t.Fatalf("expected Deprecated=True, got %v", c)
+	}
+	if c.Reason != v1alpha1.ReasonLegacySelectorInUse {
+		t.Errorf("expected reason %q, got %q",
+			v1alpha1.ReasonLegacySelectorInUse, c.Reason)
+	}
+}
+
+func TestClearDeprecated_flipsToFalse(t *testing.T) {
+	status := &v1alpha1.AegisPolicyStatus{}
+	markLegacySelectorDeprecated(status, 1)
+	clearDeprecated(status, 2)
+
+	c := findCondition(status, v1alpha1.ConditionDeprecated)
+	if c == nil || c.Status != metav1.ConditionFalse {
+		t.Fatalf("expected Deprecated=False after clear, got %v", c)
+	}
+}
+
 func TestSetCondition_isIdempotentOnSameValue(t *testing.T) {
 	// SetStatusCondition should not bump LastTransitionTime if neither
 	// Status nor Reason changed. We rely on this so that frequent reconciles

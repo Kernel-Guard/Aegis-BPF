@@ -99,6 +99,11 @@ func (r *AegisPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 	markPolicyValid(&ap.Status, ap.Generation)
 	markEnforceCapableUnknown(&ap.Status, ap.Generation)
+	if ap.Spec.Selector != nil {
+		markLegacySelectorDeprecated(&ap.Status, ap.Generation)
+	} else {
+		clearDeprecated(&ap.Status, ap.Generation)
+	}
 
 	logger.Info("Translated policy",
 		"namespace", ap.Namespace,

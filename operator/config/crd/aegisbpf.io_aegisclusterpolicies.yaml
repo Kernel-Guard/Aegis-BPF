@@ -1,203 +1,477 @@
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: aegisclusterpolicies.aegisbpf.io
   annotations:
     controller-gen.kubebuilder.io/version: v0.14.0
+  name: aegisclusterpolicies.aegisbpf.io
 spec:
   group: aegisbpf.io
   names:
+    categories:
+    - aegisbpf
     kind: AegisClusterPolicy
     listKind: AegisClusterPolicyList
     plural: aegisclusterpolicies
-    singular: aegisclusterpolicy
     shortNames:
-      - acp
-    categories:
-      - aegisbpf
+    - acp
+    singular: aegisclusterpolicy
   scope: Cluster
   versions:
-    - name: v1alpha1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      additionalPrinterColumns:
-        - name: Mode
-          type: string
-          jsonPath: .spec.mode
-        - name: Ready
-          type: string
-          jsonPath: .status.conditions[?(@.type=="Ready")].status
-        - name: EnforceCapable
-          type: string
-          jsonPath: .status.conditions[?(@.type=="EnforceCapable")].status
-        - name: Phase
-          type: string
-          jsonPath: .status.phase
-        - name: Age
-          type: date
-          jsonPath: .metadata.creationTimestamp
-      schema:
-        openAPIV3Schema:
-          description: AegisClusterPolicy defines a cluster-wide security policy enforced by Aegis-BPF.
-          type: object
-          properties:
-            apiVersion:
-              type: string
-            kind:
-              type: string
-            metadata:
-              type: object
-            spec:
-              description: AegisPolicySpec defines the desired state of an Aegis security policy.
-              type: object
-              required:
-                - mode
-              properties:
-                mode:
-                  type: string
-                  enum:
-                    - enforce
-                    - audit
-                  default: audit
-                selector:
-                  type: object
-                  properties:
-                    matchLabels:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.mode
+      name: Mode
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="EnforceCapable")].status
+      name: EnforceCapable
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: AegisClusterPolicy defines a cluster-wide security policy enforced
+          by Aegis-BPF.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: AegisPolicySpec defines the desired state of an Aegis security
+              policy.
+            properties:
+              execRules:
+                description: ExecRules defines execution allow/deny rules.
+                properties:
+                  allowBinaryHashes:
+                    description: AllowBinaryHashes lists SHA-256 hashes of allowed
+                      binaries.
+                    items:
+                      type: string
+                    type: array
+                  denyBinaryHashes:
+                    description: DenyBinaryHashes lists SHA-256 hashes of denied binaries.
+                    items:
+                      type: string
+                    type: array
+                  denyComm:
+                    description: DenyComm lists process command names to deny execution.
+                    items:
+                      type: string
+                    type: array
+                type: object
+              fileRules:
+                description: FileRules defines file access deny and protect rules.
+                properties:
+                  deny:
+                    description: Deny lists files to block access to.
+                    items:
+                      description: FileRule identifies a file by path or inode.
+                      properties:
+                        action:
+                          default: Block
+                          description: |-
+                            Action is the enforcement action for this rule. Defaults to Block
+                            if unset, which preserves backwards compatibility with v0.4.x
+                            policies that had no per-rule action field.
+
+
+                            Inode-based targets only support Action=Block today (the daemon
+                            has no [allow_inode] section). The webhook rejects Action=Allow
+                            with a non-empty Inode.
+                          enum:
+                          - Allow
+                          - Block
+                          type: string
+                        inode:
+                          description: Inode is the device:inode pair (e.g., "259:12345").
+                          pattern: ^\d+:\d+$
+                          type: string
+                        path:
+                          description: Path is the file path to match.
+                          type: string
                       type: object
-                      additionalProperties:
-                        type: string
-                    matchNamespaces:
-                      type: array
-                      items:
-                        type: string
-                fileRules:
-                  type: object
-                  properties:
-                    deny:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          path:
-                            type: string
-                          inode:
-                            type: string
-                            pattern: '^\d+:\d+$'
-                    protect:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          path:
-                            type: string
-                          inode:
-                            type: string
-                            pattern: '^\d+:\d+$'
-                networkRules:
-                  type: object
-                  properties:
-                    deny:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          ip:
-                            type: string
-                          cidr:
-                            type: string
-                          port:
-                            type: integer
-                            minimum: 1
-                            maximum: 65535
-                          protocol:
-                            type: string
-                            enum: [tcp, udp]
-                          direction:
-                            type: string
-                            enum: [outbound, inbound]
-                execRules:
-                  type: object
-                  properties:
-                    allowBinaryHashes:
-                      type: array
-                      items:
-                        type: string
-                    denyBinaryHashes:
-                      type: array
-                      items:
-                        type: string
-                    denyComm:
-                      type: array
-                      items:
-                        type: string
-                kernelRules:
-                  type: object
-                  properties:
-                    blockModuleLoad:
-                      type: boolean
-                    blockPtrace:
-                      type: boolean
-                    blockBpfSyscall:
-                      type: boolean
-            status:
-              type: object
-              properties:
-                phase:
-                  type: string
-                  enum: [Pending, Applied, Error]
-                message:
-                  type: string
-                conditions:
-                  description: |
-                    Conditions report the current observed state of this policy.
-                    Standard types: Ready, PolicyValid, EnforceCapable, Degraded.
-                  type: array
-                  x-kubernetes-list-type: map
-                  x-kubernetes-list-map-keys:
-                    - type
-                  items:
+                    type: array
+                  protect:
+                    description: Protect lists files to monitor for integrity changes.
+                    items:
+                      description: FileRule identifies a file by path or inode.
+                      properties:
+                        action:
+                          default: Block
+                          description: |-
+                            Action is the enforcement action for this rule. Defaults to Block
+                            if unset, which preserves backwards compatibility with v0.4.x
+                            policies that had no per-rule action field.
+
+
+                            Inode-based targets only support Action=Block today (the daemon
+                            has no [allow_inode] section). The webhook rejects Action=Allow
+                            with a non-empty Inode.
+                          enum:
+                          - Allow
+                          - Block
+                          type: string
+                        inode:
+                          description: Inode is the device:inode pair (e.g., "259:12345").
+                          pattern: ^\d+:\d+$
+                          type: string
+                        path:
+                          description: Path is the file path to match.
+                          type: string
+                      type: object
+                    type: array
+                type: object
+              kernelRules:
+                description: KernelRules defines kernel-level protection rules.
+                properties:
+                  blockBpfSyscall:
+                    description: BlockBpfSyscall prevents unauthorized BPF program
+                      loading.
+                    type: boolean
+                  blockModuleLoad:
+                    description: BlockModuleLoad prevents loading of kernel modules.
+                    type: boolean
+                  blockPtrace:
+                    description: BlockPtrace prevents ptrace-based process debugging/injection.
+                    type: boolean
+                type: object
+              mode:
+                default: audit
+                description: Mode controls whether the policy enforces or audits.
+                enum:
+                - enforce
+                - audit
+                type: string
+              networkRules:
+                description: NetworkRules defines network deny rules.
+                properties:
+                  deny:
+                    description: Deny lists network destinations to block.
+                    items:
+                      description: NetworkRule identifies a network destination to
+                        control.
+                      properties:
+                        action:
+                          default: Block
+                          description: |-
+                            Action is the enforcement action for this rule. Defaults to Block
+                            if unset. Allow rules take precedence over Block rules for the
+                            same literal target when multiple policies are merged.
+                          enum:
+                          - Allow
+                          - Block
+                          type: string
+                        cidr:
+                          description: CIDR is a CIDR range to deny (e.g., "10.0.0.0/8").
+                          type: string
+                        direction:
+                          description: Direction is the traffic direction ("outbound"
+                            or "inbound").
+                          enum:
+                          - outbound
+                          - inbound
+                          type: string
+                        ip:
+                          description: IP is an exact IP address to match.
+                          type: string
+                        port:
+                          description: Port is the destination port to deny (1-65535).
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        protocol:
+                          description: Protocol is the transport protocol ("tcp" or
+                            "udp").
+                          enum:
+                          - tcp
+                          - udp
+                          type: string
+                      type: object
+                    type: array
+                type: object
+              selector:
+                description: |-
+                  Selector restricts which workloads this policy applies to.
+
+
+                  Deprecated: use WorkloadSelector instead. If both Selector and
+                  WorkloadSelector are set, WorkloadSelector takes precedence and a
+                  Deprecated condition is recorded on the policy status.
+                properties:
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: MatchLabels selects pods by label.
                     type: object
-                    required:
-                      - type
-                      - status
-                      - reason
-                      - lastTransitionTime
-                      - message
+                  matchNamespaces:
+                    description: MatchNamespaces restricts the policy to specific
+                      namespaces.
+                    items:
+                      type: string
+                    type: array
+                type: object
+              workloadSelector:
+                description: |-
+                  WorkloadSelector selects the workloads this policy applies to using
+                  the expressive Kubernetes LabelSelector model (matchLabels +
+                  matchExpressions), plus a separate namespace selector. Replaces the
+                  legacy `selector` field; if both are set, WorkloadSelector wins.
+                properties:
+                  matchNamespaceNames:
+                    description: |-
+                      MatchNamespaceNames is a convenience shortcut equivalent to a
+                      NamespaceSelector with matchExpressions:
+                        kubernetes.io/metadata.name In [<names>]
+                      Kept because every competing project ships a by-name namespace
+                      selector and users expect it.
+                    items:
+                      type: string
+                    type: array
+                  namespaceSelector:
+                    description: |-
+                      NamespaceSelector restricts which namespaces the PodSelector runs
+                      against. An empty NamespaceSelector matches all namespaces (subject
+                      to the CRD scope — namespaced AegisPolicy is always limited to its
+                      own namespace). Supports matchLabels and matchExpressions.
                     properties:
-                      type:
-                        type: string
-                        maxLength: 316
-                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
-                      status:
-                        type: string
-                        enum:
-                          - "True"
-                          - "False"
-                          - Unknown
-                      observedGeneration:
-                        type: integer
-                        format: int64
-                        minimum: 0
-                      lastTransitionTime:
-                        type: string
-                        format: date-time
-                      reason:
-                        type: string
-                        maxLength: 1024
-                        minLength: 1
-                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
-                      message:
-                        type: string
-                        maxLength: 32768
-                appliedNodes:
-                  type: integer
-                lastAppliedAt:
-                  type: string
-                  format: date-time
-                policyHash:
-                  type: string
-                observedGeneration:
-                  type: integer
-                  format: int64
+                      matchExpressions:
+                        description: matchExpressions is a list of label selector
+                          requirements. The requirements are ANDed.
+                        items:
+                          description: |-
+                            A label selector requirement is a selector that contains values, a key, and an operator that
+                            relates the key and values.
+                          properties:
+                            key:
+                              description: key is the label key that the selector
+                                applies to.
+                              type: string
+                            operator:
+                              description: |-
+                                operator represents a key's relationship to a set of values.
+                                Valid operators are In, NotIn, Exists and DoesNotExist.
+                              type: string
+                            values:
+                              description: |-
+                                values is an array of string values. If the operator is In or NotIn,
+                                the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                the values array must be empty. This array is replaced during a strategic
+                                merge patch.
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                          map is equivalent to an element of matchExpressions, whose key field is "key", the
+                          operator is "In", and the values array contains only "value". The requirements are ANDed.
+                        type: object
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  podSelector:
+                    description: |-
+                      PodSelector selects pods within the matched namespaces. Supports
+                      both matchLabels and matchExpressions (In, NotIn, Exists,
+                      DoesNotExist), mirroring Kubernetes NetworkPolicy semantics.
+                    properties:
+                      matchExpressions:
+                        description: matchExpressions is a list of label selector
+                          requirements. The requirements are ANDed.
+                        items:
+                          description: |-
+                            A label selector requirement is a selector that contains values, a key, and an operator that
+                            relates the key and values.
+                          properties:
+                            key:
+                              description: key is the label key that the selector
+                                applies to.
+                              type: string
+                            operator:
+                              description: |-
+                                operator represents a key's relationship to a set of values.
+                                Valid operators are In, NotIn, Exists and DoesNotExist.
+                              type: string
+                            values:
+                              description: |-
+                                values is an array of string values. If the operator is In or NotIn,
+                                the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                the values array must be empty. This array is replaced during a strategic
+                                merge patch.
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: atomic
+                          required:
+                          - key
+                          - operator
+                          type: object
+                        type: array
+                        x-kubernetes-list-type: atomic
+                      matchLabels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                          map is equivalent to an element of matchExpressions, whose key field is "key", the
+                          operator is "In", and the values array contains only "value". The requirements are ANDed.
+                        type: object
+                    type: object
+                    x-kubernetes-map-type: atomic
+                type: object
+            required:
+            - mode
+            type: object
+          status:
+            description: |-
+              AegisPolicyStatus defines the observed state of an Aegis policy.
+
+
+              Operators should prefer the structured `Conditions` array for automation;
+              `Phase`/`Message` are retained for human-friendly `kubectl get` output.
+            properties:
+              appliedNodes:
+                description: AppliedNodes is the number of nodes where this policy
+                  is active.
+                type: integer
+              conditions:
+                description: |-
+                  Conditions report the current observed state of this policy.
+                  Standard condition types are: Ready, PolicyValid, EnforceCapable,
+                  Degraded. See the v1alpha1 package constants for reason strings.
+                items:
+                  description: "Condition contains details for one aspect of the current
+                    state of this API Resource.\n---\nThis struct is intended for
+                    direct use as an array at the field path .status.conditions.  For
+                    example,\n\n\n\ttype FooStatus struct{\n\t    // Represents the
+                    observations of a foo's current state.\n\t    // Known .status.conditions.type
+                    are: \"Available\", \"Progressing\", and \"Degraded\"\n\t    //
+                    +patchMergeKey=type\n\t    // +patchStrategy=merge\n\t    // +listType=map\n\t
+                    \   // +listMapKey=type\n\t    Conditions []metav1.Condition `json:\"conditions,omitempty\"
+                    patchStrategy:\"merge\" patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"`\n\n\n\t
+                    \   // other fields\n\t}"
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: |-
+                        type of condition in CamelCase or in foo.example.com/CamelCase.
+                        ---
+                        Many .condition.type values are consistent across resources like Available, but because arbitrary conditions can be
+                        useful (see .node.status.conditions), the ability to deconflict is important.
+                        The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              lastAppliedAt:
+                description: LastAppliedAt is the timestamp of the last successful
+                  application.
+                format: date-time
+                type: string
+              message:
+                description: |-
+                  Message provides a human-readable summary of the most recent
+                  reconcile. Automation should prefer Conditions[*].Message.
+                type: string
+              observedGeneration:
+                description: ObservedGeneration is the generation most recently observed
+                  by the controller.
+                format: int64
+                type: integer
+              phase:
+                description: |-
+                  Phase indicates the policy lifecycle phase. Retained for
+                  backwards compatibility with the printer column. Automation should
+                  prefer the Conditions array.
+                enum:
+                - Pending
+                - Applied
+                - Error
+                type: string
+              policyHash:
+                description: PolicyHash is the SHA-256 hash of the generated policy
+                  content.
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

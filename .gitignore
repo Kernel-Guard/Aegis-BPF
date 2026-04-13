@@ -30,3 +30,6 @@ __pycache__/
 Aegis-BPF-CO-RE-Enforcement-Prototype/
 docs/_internal/
 artifacts/
+
+# operator local tooling (controller-gen etc.)
+/operator/bin/
