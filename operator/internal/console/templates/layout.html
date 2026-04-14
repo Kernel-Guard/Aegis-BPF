@@ -1,0 +1,31 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AegisBPF Console</title>
+    <script src="/console/static/htmx.min.js"></script>
+    <script src="/console/static/sse.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @keyframes fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.3s ease-out; }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .animate-pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+        pre { tab-size: 4; }
+        .htmx-settling { opacity: 0.8; }
+        .htmx-swapping { opacity: 0.5; transition: opacity 0.15s ease-out; }
+    </style>
+</head>
+<body class="h-full bg-gray-950 text-gray-100 font-sans" hx-ext="sse" sse-connect="/console/events">
+    {{template "nav" .}}
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {{block "content" .}}{{end}}
+    </main>
+    <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-xs text-gray-600">
+        AegisBPF Operator Console &middot; v0.5.0
+    </footer>
+</body>
+</html>
+{{end}}

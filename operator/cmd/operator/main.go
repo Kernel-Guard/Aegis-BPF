@@ -20,6 +20,7 @@ import (
 
 	v1alpha1 "github.com/ErenAri/aegis-operator/api/v1alpha1"
 	"github.com/ErenAri/aegis-operator/controllers"
+	"github.com/ErenAri/aegis-operator/internal/console"
 	"github.com/ErenAri/aegis-operator/internal/identity"
 	aegiswebhook "github.com/ErenAri/aegis-operator/internal/webhook"
 )
@@ -40,6 +41,8 @@ func main() {
 		identityInterval     time.Duration
 		enableWebhook        bool
 		webhookPort          int
+		enableConsole        bool
+		consoleAddr          string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -53,6 +56,10 @@ func main() {
 	flag.BoolVar(&enableWebhook, "enable-webhook", false,
 		"Enable validating admission webhook for AegisPolicy CRDs.")
 	flag.IntVar(&webhookPort, "webhook-port", 9443, "Port for the webhook server.")
+	flag.BoolVar(&enableConsole, "enable-console", false,
+		"Enable the web console for policy visualization and monitoring.")
+	flag.StringVar(&consoleAddr, "console-addr", ":9090",
+		"The address the web console binds to.")
 
 	opts := zap.Options{Development: false}
 	opts.BindFlags(flag.CommandLine)
@@ -80,6 +87,9 @@ func main() {
 		logger.Error(err, "Unable to create manager")
 		os.Exit(1)
 	}
+
+	// Create SSE event broker for the web console.
+	eventBroker := console.NewBroker()
 
 	// Register AegisPolicy controller.
 	if err := (&controllers.AegisPolicyReconciler{
@@ -128,6 +138,20 @@ func main() {
 		logger.Info("Identity resolution enabled", "interval", identityInterval)
 	}
 
+	// Start web console if enabled.
+	if enableConsole {
+		consoleSrv, err := console.NewServer(mgr.GetClient(), consoleAddr, eventBroker)
+		if err != nil {
+			logger.Error(err, "Unable to create console server")
+			os.Exit(1)
+		}
+		if err := mgr.Add(consoleSrv); err != nil {
+			logger.Error(err, "Unable to add console server")
+			os.Exit(1)
+		}
+		logger.Info("Web console enabled", "addr", consoleAddr)
+	}
+
 	// Health and readiness probes.
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		logger.Error(err, "Unable to set up health check")
@@ -139,10 +163,11 @@ func main() {
 	}
 
 	logger.Info("Starting aegis-operator",
-		"version", "0.1.0",
+		"version", "0.5.0",
 		"leaderElection", enableLeaderElection,
 		"identityResolution", identityEnabled,
 		"webhook", enableWebhook,
+		"console", enableConsole,
 	)
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

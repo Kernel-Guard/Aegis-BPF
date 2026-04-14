@@ -1,0 +1,47 @@
+{{define "dashboard"}}
+{{template "layout" .}}
+{{end}}
+
+{{define "dashboard_content"}}
+<div class="space-y-6 animate-fade-in">
+    <div class="flex items-center justify-between">
+        <h1 class="text-lg font-semibold text-white">Dashboard</h1>
+        <div class="flex items-center space-x-2 text-xs text-gray-500">
+            <span>Daemon Pods: {{len .DaemonPods}}</span>
+            <span>&middot;</span>
+            <span>SSE Clients: {{.ActiveClients}}</span>
+        </div>
+    </div>
+
+    <div sse-swap="statsRefresh" hx-swap="innerHTML" hx-target="#stats-cards-wrap">
+        <div id="stats-cards-wrap" hx-get="/console/partials/stats" hx-trigger="every 10s" hx-swap="innerHTML">
+            {{template "stats_cards" .}}
+        </div>
+    </div>
+
+    {{if gt .DeprecatedCount 0}}
+    <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 flex items-start space-x-3">
+        <svg class="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+        </svg>
+        <div>
+            <p class="text-sm text-yellow-400 font-medium">{{.DeprecatedCount}} {{if eq .DeprecatedCount 1}}policy uses{{else}}policies use{{end}} deprecated spec.selector</p>
+            <p class="text-xs text-yellow-500/70 mt-0.5">Migrate to spec.workloadSelector for matchExpressions support</p>
+        </div>
+    </div>
+    {{end}}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2">
+            {{template "policy_table" .}}
+        </div>
+        <div>
+            {{template "daemon_table" .}}
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "content"}}
+{{template "dashboard_content" .}}
+{{end}}
