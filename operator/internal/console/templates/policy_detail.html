@@ -1,0 +1,190 @@
+{{define "policy_detail"}}
+{{template "layout" .}}
+{{end}}
+
+{{define "policy_detail_content"}}
+<div class="space-y-6 animate-fade-in">
+    <!-- Breadcrumb -->
+    <div class="flex items-center space-x-2 text-xs text-gray-500">
+        <a href="/console/policies" class="hover:text-gray-300" hx-get="/console/policies" hx-target="main" hx-swap="innerHTML" hx-push-url="true">Policies</a>
+        <span>/</span>
+        <span class="text-gray-300">{{.Policy.Name}}</span>
+    </div>
+
+    <!-- Header -->
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-lg font-semibold text-white">{{.Policy.Name}}</h1>
+            <div class="flex items-center space-x-2 mt-1.5">
+                {{if .Policy.Namespace}}<span class="text-xs text-gray-500">{{.Policy.Namespace}}</span>{{end}}
+                <span class="text-xs px-1.5 py-0.5 rounded {{if eq .Policy.Scope "Cluster"}}bg-purple-500/20 text-purple-400{{else}}bg-cyan-500/20 text-cyan-400{{end}}">{{.Policy.Scope}}</span>
+                <span class="text-xs px-1.5 py-0.5 rounded border {{modeClass .Policy.Mode}}">{{.Policy.Mode}}</span>
+                <span class="text-xs px-1.5 py-0.5 rounded border {{badgeClass .Policy.Phase}}">{{.Policy.Phase}}</span>
+            </div>
+        </div>
+        <div class="text-right text-xs text-gray-500">
+            <div>Generation: {{.Policy.Generation}}</div>
+            <div class="font-mono mt-0.5">{{truncHash .Policy.Hash}}</div>
+            <div class="mt-0.5">Applied: {{timeAgo .Policy.LastApplied}}</div>
+        </div>
+    </div>
+
+    {{if .Policy.Message}}
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-3">
+        <p class="text-sm text-gray-400">{{.Policy.Message}}</p>
+    </div>
+    {{end}}
+
+    <!-- Conditions -->
+    {{if .Policy.Conditions}}
+    <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+        <div class="px-4 py-3 border-b border-gray-800">
+            <h2 class="text-sm font-medium text-gray-300">Conditions</h2>
+        </div>
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
+                    <th class="px-4 py-2 text-left">Type</th>
+                    <th class="px-4 py-2 text-left">Status</th>
+                    <th class="px-4 py-2 text-left">Reason</th>
+                    <th class="px-4 py-2 text-left">Message</th>
+                    <th class="px-4 py-2 text-left">Age</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800/50">
+                {{range .Policy.Conditions}}
+                <tr>
+                    <td class="px-4 py-2 font-medium text-gray-300">{{.Type}}</td>
+                    <td class="px-4 py-2">
+                        <span class="{{conditionIcon .Status}}">
+                            {{if eq .Status "True"}}True{{else if eq .Status "False"}}False{{else}}Unknown{{end}}
+                        </span>
+                    </td>
+                    <td class="px-4 py-2 font-mono text-xs text-gray-400">{{.Reason}}</td>
+                    <td class="px-4 py-2 text-xs text-gray-500 max-w-md truncate">{{.Message}}</td>
+                    <td class="px-4 py-2 text-xs text-gray-500">{{.Ago}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{end}}
+
+    <!-- Rules Summary -->
+    {{if .Spec}}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {{if .Spec.FileRules}}
+        <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-800">
+                <h2 class="text-sm font-medium text-gray-300">File Rules</h2>
+            </div>
+            <div class="p-4 space-y-2">
+                {{range .Spec.FileRules.Deny}}
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-mono text-gray-400">{{if .Path}}{{.Path}}{{else}}inode:{{.Inode}}{{end}}</span>
+                    <span class="px-1.5 py-0.5 rounded {{actionClass (printf "%s" .Action)}}">{{if .Action}}{{.Action}}{{else}}Block{{end}}</span>
+                </div>
+                {{end}}
+                {{range .Spec.FileRules.Protect}}
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-mono text-gray-400">{{.Path}}</span>
+                    <span class="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">Protect</span>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        {{if .Spec.NetworkRules}}
+        <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-800">
+                <h2 class="text-sm font-medium text-gray-300">Network Rules</h2>
+            </div>
+            <div class="p-4 space-y-2">
+                {{range .Spec.NetworkRules.Deny}}
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-mono text-gray-400">
+                        {{if .IP}}{{.IP}}{{end}}{{if .CIDR}}{{.CIDR}}{{end}}{{if .Port}}:{{.Port}}{{end}}
+                        {{if .Protocol}}<span class="text-gray-600">{{.Protocol}}</span>{{end}}
+                        {{if .Direction}}<span class="text-gray-600">{{.Direction}}</span>{{end}}
+                    </span>
+                    <span class="px-1.5 py-0.5 rounded {{actionClass (printf "%s" .Action)}}">{{if .Action}}{{.Action}}{{else}}Block{{end}}</span>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        {{if .Spec.ExecRules}}
+        <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-800">
+                <h2 class="text-sm font-medium text-gray-300">Exec Rules</h2>
+            </div>
+            <div class="p-4 space-y-2">
+                {{range .Spec.ExecRules.DenyBinaryHashes}}
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-mono text-gray-400 truncate max-w-[200px]">sha256:{{.}}</span>
+                    <span class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">Deny</span>
+                </div>
+                {{end}}
+                {{range .Spec.ExecRules.AllowBinaryHashes}}
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-mono text-gray-400 truncate max-w-[200px]">sha256:{{.}}</span>
+                    <span class="px-1.5 py-0.5 rounded bg-green-500/20 text-green-400">Allow</span>
+                </div>
+                {{end}}
+                {{range .Spec.ExecRules.DenyComm}}
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-mono text-gray-400">comm: {{.}}</span>
+                    <span class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">Deny</span>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        {{if .Spec.KernelRules}}
+        <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-800">
+                <h2 class="text-sm font-medium text-gray-300">Kernel Rules</h2>
+            </div>
+            <div class="p-4 space-y-2">
+                {{if .Spec.KernelRules.BlockModuleLoad}}
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-gray-400">Module Loading</span>
+                    <span class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">Blocked</span>
+                </div>
+                {{end}}
+                {{if .Spec.KernelRules.BlockPtrace}}
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-gray-400">Ptrace</span>
+                    <span class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">Blocked</span>
+                </div>
+                {{end}}
+                {{if .Spec.KernelRules.BlockBpfSyscall}}
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-gray-400">BPF Syscall</span>
+                    <span class="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">Blocked</span>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+    </div>
+    {{end}}
+
+    <!-- INI Preview -->
+    {{if .INIPreview}}
+    <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+        <div class="px-4 py-3 border-b border-gray-800">
+            <h2 class="text-sm font-medium text-gray-300">Translated INI (daemon format)</h2>
+        </div>
+        <pre class="p-4 text-xs text-gray-400 overflow-x-auto leading-relaxed">{{.INIPreview}}</pre>
+    </div>
+    {{end}}
+</div>
+{{end}}
+
+{{define "content"}}
+{{template "policy_detail_content" .}}
+{{end}}
