@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775736462109,
-  "repoUrl": "https://github.com/ErenAri/Aegis-BPF",
+  "lastUpdate": 1776191044761,
+  "repoUrl": "https://github.com/Kernel-Guard/Aegis-BPF",
   "entries": {
     "Benchmark": [
       {
@@ -32844,6 +32844,102 @@ window.BENCHMARK_DATA = {
             "value": 66.35545124317346,
             "unit": "ns/iter",
             "extra": "iterations: 12\ncpu: 66.34799292699095 ns\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "erenari27@gmail.com",
+            "name": "Eren Arı",
+            "username": "ErenAri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "14bdde9ee35eeea799dde2b40b6b3808f77dfa0e",
+          "message": "Merge pull request #79 from ErenAri/claude/quirky-aryabhata\n\nfeat(operator): v0.5.0 policy model — WorkloadSelector, per-rule Action, Allow>Block precedence",
+          "timestamp": "2026-04-14T00:36:19+03:00",
+          "tree_id": "bda96dac69336359181197cd3f592ab22a96c008",
+          "url": "https://github.com/Kernel-Guard/Aegis-BPF/commit/14bdde9ee35eeea799dde2b40b6b3808f77dfa0e"
+        },
+        "date": 1776191044133,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "BM_Sha256Long/64_mean",
+            "value": 1517.6057738672318,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1517.4906264481122 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/512_mean",
+            "value": 3736.6996116083483,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 3736.375890424821 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/4096_mean",
+            "value": 21716.169733415823,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 21712.08059659162 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/32768_mean",
+            "value": 164644.77044893624,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 164632.40728444367 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/262144_mean",
+            "value": 1311046.2742438458,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1310941.129170567 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/1048576_mean",
+            "value": 5247858.674781515,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 5246816.819288393 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/100_mean",
+            "value": 4796.294746350748,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 4801.361496511697 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/512_mean",
+            "value": 33174.66093513227,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 33183.48402358522 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/4096_mean",
+            "value": 270058.4779219034,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 270044.38020633184 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/10000_mean",
+            "value": 814538.1118369588,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 814525.7401277199 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseIpv6Full_mean",
+            "value": 72.24713845464412,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 72.23564262251708 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseCidrV6_mean",
+            "value": 54.67933836057293,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 54.67498302252551 ns\nthreads: 1"
           }
         ]
       }
