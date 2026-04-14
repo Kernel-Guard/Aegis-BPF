@@ -1,0 +1,41 @@
+{{define "policy_table"}}
+<div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden" id="policy-table">
+    <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+        <h2 class="text-sm font-medium text-gray-300">Policies</h2>
+        <span class="text-xs text-gray-500" hx-get="/console/partials/policy-table" hx-trigger="every 10s" hx-swap="outerHTML" hx-target="#policy-table">
+            Auto-refreshing
+        </span>
+    </div>
+    {{if .Policies}}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
+                    <th class="px-4 py-2 text-left">Name</th>
+                    <th class="px-4 py-2 text-left">Scope</th>
+                    <th class="px-4 py-2 text-left">Mode</th>
+                    <th class="px-4 py-2 text-left">Phase</th>
+                    <th class="px-4 py-2 text-center">Rules</th>
+                    <th class="px-4 py-2 text-left">Actions</th>
+                    <th class="px-4 py-2 text-left">Hash</th>
+                    <th class="px-4 py-2 text-left">Last Applied</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800/50">
+                {{range .Policies}}
+                {{template "policy_row" .}}
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{else}}
+    <div class="px-4 py-12 text-center text-gray-600">
+        <svg class="w-12 h-12 mx-auto mb-3 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <p class="text-sm">No policies found</p>
+        <p class="text-xs text-gray-700 mt-1">Create an AegisPolicy or AegisClusterPolicy to get started</p>
+    </div>
+    {{end}}
+</div>
+{{end}}
