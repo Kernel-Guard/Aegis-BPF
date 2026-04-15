@@ -14,6 +14,13 @@ SOAK_GENERATE_BLOCK_EVENTS="${SOAK_GENERATE_BLOCK_EVENTS:-1}"
 SOAK_BLOCK_PATH="${SOAK_BLOCK_PATH:-/etc/hosts}"
 SOAK_SUMMARY_OUT="${SOAK_SUMMARY_OUT:-}"
 OUT_JSON="${OUT_JSON:-}"
+# SOAK_MODE: audit (default) or enforce.
+# enforce mode runs with --enforce and verifies the deny rule actually blocks.
+SOAK_MODE="${SOAK_MODE:-audit}"
+# SOAK_NET_WORKLOAD: 0 (default) or 1.
+# When enabled, workers also generate UDP connect() traffic to exercise
+# network hooks alongside file I/O.
+SOAK_NET_WORKLOAD="${SOAK_NET_WORKLOAD:-0}"
 
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "soak_reliability.sh must run as root" >&2
@@ -55,6 +62,16 @@ if [[ -z "${SOAK_BLOCK_PATH}" || "${SOAK_BLOCK_PATH}" != /* ]]; then
   exit 1
 fi
 
+if [[ "${SOAK_MODE}" != "audit" && "${SOAK_MODE}" != "enforce" ]]; then
+  echo "SOAK_MODE must be 'audit' or 'enforce'" >&2
+  exit 1
+fi
+
+if [[ "${SOAK_NET_WORKLOAD}" != "0" && "${SOAK_NET_WORKLOAD}" != "1" ]]; then
+  echo "SOAK_NET_WORKLOAD must be 0 or 1" >&2
+  exit 1
+fi
+
 LOG_DIR="$(mktemp -d)" || { echo "Failed to create temp directory" >&2; exit 1; }
 DAEMON_LOG="${LOG_DIR}/daemon.log"
 WORKLOAD_LOG="${LOG_DIR}/workload.log"
@@ -78,7 +95,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "starting daemon for soak test (duration=${DURATION_SECONDS}s workers=${WORKERS})"
+echo "starting daemon for soak test (mode=${SOAK_MODE} duration=${DURATION_SECONDS}s workers=${WORKERS} net=${SOAK_NET_WORKLOAD})"
 if [[ "${SOAK_GENERATE_BLOCK_EVENTS}" == "1" ]]; then
   # Pre-seed the deny rule before daemon startup so audit-mode hook optimization
   # does not skip file hooks due an empty-policy hint.
@@ -91,7 +108,11 @@ if [[ "${SOAK_GENERATE_BLOCK_EVENTS}" == "1" ]]; then
   fi
 fi
 
-"${AEGIS_BIN}" run --audit --ringbuf-bytes="${RINGBUF_BYTES}" >"${DAEMON_LOG}" 2>&1 &
+DAEMON_MODE_FLAG="--audit"
+if [[ "${SOAK_MODE}" == "enforce" ]]; then
+  DAEMON_MODE_FLAG="--enforce"
+fi
+"${AEGIS_BIN}" run ${DAEMON_MODE_FLAG} --ringbuf-bytes="${RINGBUF_BYTES}" >"${DAEMON_LOG}" 2>&1 &
 DAEMON_PID=$!
 sleep 2
 
@@ -109,6 +130,25 @@ for _ in $(seq 1 "${WORKERS}"); do
   ) >>"${WORKLOAD_LOG}" 2>&1 &
   WORKER_PIDS+=("$!")
 done
+
+# Optional network workload: UDP connect() to localhost to exercise socket hooks.
+if [[ "${SOAK_NET_WORKLOAD}" == "1" ]]; then
+  echo "starting network workload workers (UDP connect to 127.0.0.1:9)"
+  for _ in $(seq 1 2); do
+    python3 -c "
+import socket, os, signal, time
+signal.signal(signal.SIGTERM, lambda *a: exit(0))
+while True:
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('127.0.0.1', 9))
+        s.close()
+    except OSError:
+        time.sleep(0.001)
+" >>"${WORKLOAD_LOG}" 2>&1 &
+    WORKER_PIDS+=("$!")
+  done
+fi
 
 read_rss_kb() {
   awk '/VmRSS:/ { print $2; found=1 } END { if (!found) print 0 }' "/proc/${DAEMON_PID}/status"
@@ -218,6 +258,8 @@ if [[ -n "${OUT_JSON}" ]]; then
 import json
 
 payload = {
+    "mode": "${SOAK_MODE}",
+    "net_workload": bool(int("${SOAK_NET_WORKLOAD}")),
     "duration_seconds": int("${DURATION_SECONDS}"),
     "workers": int("${WORKERS}"),
     "poll_seconds": int("${POLL_SECONDS}"),

@@ -162,23 +162,41 @@ to `performance`.
 | Tetragon | v1.6.0 | 1.63 | 1.52 | 1.57 | 2.27 | −3.55% |
 | Falco | 0.43.1 | 2.33 | 2.20 | 2.36 | 3.47 | **+37.87%** |
 
-**Key observations:**
+### Network workload: `connect_close` (UDP socket → connect → close)
 
-- AegisBPF and Tetragon are both within noise of the bare baseline on this
-  workload. The negative deltas are measurement variance, not real speedups.
-- Falco shows a consistent +38% overhead, attributable to its userspace
-  rule engine processing every syscall event even with an empty rules file.
-- These numbers are for `open_close` (file I/O) only. Network and exec
-  workloads are planned but not yet measured in a head-to-head setting.
+| Agent | Version | µs/op | p50 (µs) | p95 (µs) | p99 (µs) | Delta vs bare |
+|---|---|---|---|---|---|---|
+| none (baseline) | — | 3.62 | 2.66 | 5.50 | 7.38 | — |
+| **AegisBPF** | 0.1.0 | 3.87 | 2.67 | 5.34 | 8.18 | **+6.91%** |
+| Tetragon | v1.6.0 | 3.74 | 2.89 | 5.46 | 7.18 | +3.31% |
+| Falco | 0.43.1 | 4.44 | 3.47 | 6.13 | 8.56 | **+22.65%** |
+
+### Key observations
+
+- **File I/O (`open_close`):** AegisBPF and Tetragon are both within noise
+  of the bare baseline. Falco shows +38% overhead from its userspace rule
+  engine.
+- **Network (`connect_close`):** All agents show small overhead. AegisBPF
+  at +6.9% reflects its 6 socket lifecycle hooks (connect/bind/listen/
+  accept/sendmsg/recvmsg). Tetragon is +3.3%, Falco +22.7%.
+- The negative deltas in `open_close` are measurement variance, not real
+  speedups. The `connect_close` workload is noisier (higher variance) due
+  to UDP socket teardown timing.
+- Falco's overhead is consistent across both workloads because its
+  userspace rule engine processes every syscall event regardless of type.
 
 **Reproduce:**
 
 ```bash
 sudo scripts/install_peer_tools.sh all
+# File I/O workload
 sudo scripts/compare_runtime_security.sh \
     --agents none,aegisbpf,falco,tetragon \
-    --iterations 200000 \
-    --out results/
+    --workload open_close --iterations 200000 --out results/
+# Network workload
+sudo scripts/compare_runtime_security.sh \
+    --agents none,aegisbpf,falco,tetragon \
+    --workload connect_close --iterations 200000 --out results/
 ```
 
 Raw per-agent JSON: `evidence/comparison/`
