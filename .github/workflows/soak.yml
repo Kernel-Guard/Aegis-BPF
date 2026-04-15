@@ -6,7 +6,69 @@ on:
     - cron: "0 1 * * 0"
 
 jobs:
-  soak:
+  soak-audit:
+    name: "Audit-mode soak (1 hour)"
+    runs-on: [self-hosted, bpf-lsm]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (if apt-get is available)
+        run: |
+          if command -v apt-get >/dev/null 2>&1; then
+            export DEBIAN_FRONTEND=noninteractive
+            sudo apt-get update
+            sudo apt-get install -y clang llvm libbpf-dev libsystemd-dev pkg-config cmake ninja-build python3-jsonschema libelf-dev zlib1g-dev git
+            if ! command -v bpftool >/dev/null 2>&1; then
+              sudo apt-get install -y linux-tools-common || true
+              sudo apt-get install -y "linux-tools-$(uname -r)" || \
+                sudo apt-get install -y linux-tools-gcp || \
+                sudo apt-get install -y linux-tools-generic || true
+            fi
+            if ! command -v bpftool >/dev/null 2>&1; then
+              echo "bpftool is required but was not installed" >&2
+              exit 1
+            fi
+          fi
+
+      - name: Verify environment
+        run: scripts/verify_env.sh --strict
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Soak reliability gate (audit, file + network, 1 hour)
+        run: |
+          mkdir -p artifacts/soak
+          sudo AEGIS_BIN=./build/aegisbpf \
+            SOAK_MODE=audit \
+            SOAK_NET_WORKLOAD=1 \
+            DURATION_SECONDS=3600 \
+            MAX_RINGBUF_DROPS=500 \
+            MAX_RSS_GROWTH_KB=131072 \
+            OUT_JSON=artifacts/soak/soak_audit_summary.json \
+            scripts/soak_reliability.sh
+
+      - name: Capture soak environment
+        if: always()
+        run: |
+          uname -a > artifacts/soak/kernel.txt
+          cat /etc/os-release > artifacts/soak/os-release.txt || true
+          lscpu > artifacts/soak/cpu.txt || true
+
+      - name: Upload soak evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soak-audit-evidence
+          path: artifacts/soak/
+          if-no-files-found: warn
+
+  soak-enforce:
+    name: "Enforce-mode soak (15 min)"
     runs-on: [self-hosted, bpf-lsm]
     timeout-minutes: 60
     steps:
@@ -39,32 +101,36 @@ jobs:
       - name: Build
         run: cmake --build build
 
-      - name: Soak reliability gate
+      - name: Soak reliability gate (enforce, file + network, 15 min)
         run: |
-          mkdir -p artifacts/soak
+          mkdir -p artifacts/soak-enforce
           sudo AEGIS_BIN=./build/aegisbpf \
+            SOAK_MODE=enforce \
+            SOAK_NET_WORKLOAD=1 \
             DURATION_SECONDS=900 \
             MAX_RINGBUF_DROPS=250 \
             MAX_RSS_GROWTH_KB=131072 \
-            OUT_JSON=artifacts/soak/soak_summary.json \
+            MIN_TOTAL_DECISIONS=50 \
+            OUT_JSON=artifacts/soak-enforce/soak_enforce_summary.json \
             scripts/soak_reliability.sh
 
       - name: Capture soak environment
         if: always()
         run: |
-          uname -a > artifacts/soak/kernel.txt
-          cat /etc/os-release > artifacts/soak/os-release.txt || true
-          lscpu > artifacts/soak/cpu.txt || true
+          uname -a > artifacts/soak-enforce/kernel.txt
+          cat /etc/os-release > artifacts/soak-enforce/os-release.txt || true
+          lscpu > artifacts/soak-enforce/cpu.txt || true
 
       - name: Upload soak evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: soak-evidence
-          path: artifacts/soak/
+          name: soak-enforce-evidence
+          path: artifacts/soak-enforce/
           if-no-files-found: warn
 
   soak-asan:
+    name: "ASAN soak (5 min)"
     runs-on: [self-hosted, bpf-lsm]
     timeout-minutes: 30
     steps:
@@ -108,6 +174,8 @@ jobs:
           mkdir -p artifacts/soak-asan
           sudo ASAN_OPTIONS=detect_leaks=1:halt_on_error=0:log_path=artifacts/soak-asan/asan \
             AEGIS_BIN=./build-asan/aegisbpf \
+            SOAK_MODE=audit \
+            SOAK_NET_WORKLOAD=1 \
             DURATION_SECONDS=300 \
             MAX_RINGBUF_DROPS=500 \
             MAX_RSS_GROWTH_KB=524288 \
