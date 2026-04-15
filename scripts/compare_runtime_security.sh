@@ -46,6 +46,7 @@ STRICT_MISSING="${STRICT_MISSING:-0}"
 AEGISBPF_BIN="${AEGISBPF_BIN:-${REPO_ROOT}/build/aegisbpf}"
 PERF_OPEN_BENCH="${PERF_OPEN_BENCH:-${REPO_ROOT}/scripts/perf_open_bench.sh}"
 PERF_CONNECT_BENCH="${PERF_CONNECT_BENCH:-${REPO_ROOT}/scripts/perf_connect_bench.sh}"
+PERF_EXEC_BENCH="${PERF_EXEC_BENCH:-${REPO_ROOT}/scripts/perf_exec_bench.sh}"
 
 usage() {
     cat <<EOF
@@ -55,7 +56,7 @@ Options:
   --agents LIST         Comma-separated agent IDs to exercise.
                         Supported: none,aegisbpf,falco,tetragon,tracee,kubearmor
                         Default: none,aegisbpf
-  --workload NAME       Workload profile: open_close (default), connect_close.
+  --workload NAME       Workload profile: open_close (default), connect_close, exec_loop.
   --iterations N        Iterations per run (default: ${ITERATIONS}).
   --out DIR             Write per-agent JSON + results.md to DIR.
   --cooldown SECONDS    Seconds to wait between agent runs (default: ${COOLDOWN_SECONDS}).
@@ -106,8 +107,14 @@ case "${WORKLOAD}" in
             exit 1
         fi
         ;;
+    exec_loop)
+        if [[ ! -x "${PERF_EXEC_BENCH}" ]]; then
+            err "perf_exec_bench.sh not found or not executable: ${PERF_EXEC_BENCH}"
+            exit 1
+        fi
+        ;;
     *)
-        err "unsupported workload '${WORKLOAD}' (supported: open_close, connect_close)"
+        err "unsupported workload '${WORKLOAD}' (supported: open_close, connect_close, exec_loop)"
         exit 1
         ;;
 esac
@@ -183,6 +190,7 @@ run_perf_bench() {
     case "${WORKLOAD}" in
         open_close)    bench_script="${PERF_OPEN_BENCH}" ;;
         connect_close) bench_script="${PERF_CONNECT_BENCH}" ;;
+        exec_loop)     bench_script="${PERF_EXEC_BENCH}" ;;
     esac
     FORMAT=json OUT="${tmp_json}" ITERATIONS="${ITERATIONS}" WITH_AGENT=0 \
         "${bench_script}" >/dev/null

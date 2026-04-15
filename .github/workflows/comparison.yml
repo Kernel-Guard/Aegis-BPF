@@ -1,0 +1,166 @@
+name: Weekly Comparison
+
+on:
+  workflow_dispatch:
+    inputs:
+      workloads:
+        description: "Comma-separated workloads (open_close,connect_close,exec_loop)"
+        required: false
+        default: "open_close,connect_close,exec_loop"
+      agents:
+        description: "Comma-separated agents (none,aegisbpf,falco,tetragon)"
+        required: false
+        default: "none,aegisbpf,falco,tetragon"
+      iterations:
+        description: "Iterations per workload (open/connect: this value, exec: value/20)"
+        required: false
+        default: "200000"
+  schedule:
+    - cron: "0 3 * * 1"  # Monday 03:00 UTC
+
+permissions:
+  contents: read
+
+concurrency:
+  group: comparison-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  comparison:
+    name: "Head-to-head comparison"
+    runs-on: [self-hosted, bpf-lsm]
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        workload: [open_close, connect_close, exec_loop]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          if command -v apt-get >/dev/null 2>&1; then
+            export DEBIAN_FRONTEND=noninteractive
+            sudo apt-get update
+            sudo apt-get install -y clang llvm libbpf-dev libsystemd-dev pkg-config \
+              cmake ninja-build python3-jsonschema libelf-dev zlib1g-dev git
+            if ! command -v bpftool >/dev/null 2>&1; then
+              sudo apt-get install -y linux-tools-common || true
+              sudo apt-get install -y "linux-tools-$(uname -r)" || \
+                sudo apt-get install -y linux-tools-gcp || \
+                sudo apt-get install -y linux-tools-generic || true
+            fi
+            if ! command -v bpftool >/dev/null 2>&1; then
+              echo "bpftool is required but was not installed" >&2
+              exit 1
+            fi
+          fi
+
+      - name: Install peer tools (Falco + Tetragon)
+        run: sudo scripts/install_peer_tools.sh all
+
+      - name: Verify environment
+        run: scripts/verify_env.sh --strict
+
+      - name: Configure and build AegisBPF
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          cmake --build build
+
+      - name: Set CPU governor (performance)
+        run: |
+          if [[ -r /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors ]] && \
+             grep -qw performance /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors; then
+            echo "Setting CPU governor=performance"
+            for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+              echo performance | sudo tee "$g" >/dev/null || true
+            done
+          else
+            echo "CPU governor control not available; continuing"
+          fi
+
+      - name: Stop any running security agents
+        run: |
+          sudo systemctl stop aegisbpf.service 2>/dev/null || true
+          sudo systemctl stop falco.service 2>/dev/null || true
+          sudo systemctl stop tetragon.service 2>/dev/null || true
+          sleep 2
+
+      - name: Determine iterations
+        id: iters
+        run: |
+          BASE_ITERS="${{ github.event.inputs.iterations || '200000' }}"
+          if [[ "${{ matrix.workload }}" == "exec_loop" ]]; then
+            ITERS=$((BASE_ITERS / 20))
+            [[ $ITERS -lt 5000 ]] && ITERS=5000
+          else
+            ITERS="${BASE_ITERS}"
+          fi
+          echo "iterations=${ITERS}" >> "$GITHUB_OUTPUT"
+
+      - name: Run comparison (${{ matrix.workload }})
+        run: |
+          mkdir -p artifacts/comparison
+          AGENTS="${{ github.event.inputs.agents || 'none,aegisbpf,falco,tetragon' }}"
+          sudo scripts/compare_runtime_security.sh \
+            --agents "${AGENTS}" \
+            --workload ${{ matrix.workload }} \
+            --iterations ${{ steps.iters.outputs.iterations }} \
+            --out artifacts/comparison/
+
+      - name: Capture comparison environment
+        if: always()
+        run: |
+          uname -a > artifacts/comparison/kernel.txt
+          cat /etc/os-release > artifacts/comparison/os-release.txt || true
+          lscpu > artifacts/comparison/cpu.txt || true
+          date -u > artifacts/comparison/timestamp.txt
+
+      - name: Restore CPU governor
+        if: always()
+        run: |
+          for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+            echo powersave | sudo tee "$g" >/dev/null 2>&1 || true
+          done
+
+      - name: Upload comparison evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: comparison-${{ matrix.workload }}
+          path: artifacts/comparison/
+          if-no-files-found: warn
+
+  summary:
+    name: "Comparison summary"
+    runs-on: ubuntu-latest
+    needs: comparison
+    if: always()
+    steps:
+      - name: Download all comparison artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-results/
+          pattern: comparison-*
+
+      - name: Generate summary
+        run: |
+          echo "## Weekly Comparison Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Date: $(date -u +%Y-%m-%d)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          for dir in all-results/comparison-*/; do
+            workload="$(basename "$dir" | sed 's/comparison-//')"
+            echo "### ${workload}" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            # Print any JSON results found
+            for f in "${dir}"*.json; do
+              if [[ -f "$f" ]]; then
+                echo '```json' >> "$GITHUB_STEP_SUMMARY"
+                cat "$f" >> "$GITHUB_STEP_SUMMARY"
+                echo "" >> "$GITHUB_STEP_SUMMARY"
+                echo '```' >> "$GITHUB_STEP_SUMMARY"
+              fi
+            done
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          done
