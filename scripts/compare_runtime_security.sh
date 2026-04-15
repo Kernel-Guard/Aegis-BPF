@@ -45,6 +45,7 @@ COOLDOWN_SECONDS="${COOLDOWN_SECONDS:-5}"
 STRICT_MISSING="${STRICT_MISSING:-0}"
 AEGISBPF_BIN="${AEGISBPF_BIN:-${REPO_ROOT}/build/aegisbpf}"
 PERF_OPEN_BENCH="${PERF_OPEN_BENCH:-${REPO_ROOT}/scripts/perf_open_bench.sh}"
+PERF_CONNECT_BENCH="${PERF_CONNECT_BENCH:-${REPO_ROOT}/scripts/perf_connect_bench.sh}"
 
 usage() {
     cat <<EOF
@@ -54,7 +55,7 @@ Options:
   --agents LIST         Comma-separated agent IDs to exercise.
                         Supported: none,aegisbpf,falco,tetragon,tracee,kubearmor
                         Default: none,aegisbpf
-  --workload NAME       Workload profile. Currently: open_close (default).
+  --workload NAME       Workload profile: open_close (default), connect_close.
   --iterations N        Iterations per run (default: ${ITERATIONS}).
   --out DIR             Write per-agent JSON + results.md to DIR.
   --cooldown SECONDS    Seconds to wait between agent runs (default: ${COOLDOWN_SECONDS}).
@@ -92,15 +93,24 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ "${WORKLOAD}" != "open_close" ]]; then
-    err "unsupported workload '${WORKLOAD}' (only open_close is implemented)"
-    exit 1
-fi
-
-if [[ ! -x "${PERF_OPEN_BENCH}" ]]; then
-    err "perf_open_bench.sh not found or not executable: ${PERF_OPEN_BENCH}"
-    exit 1
-fi
+case "${WORKLOAD}" in
+    open_close)
+        if [[ ! -x "${PERF_OPEN_BENCH}" ]]; then
+            err "perf_open_bench.sh not found or not executable: ${PERF_OPEN_BENCH}"
+            exit 1
+        fi
+        ;;
+    connect_close)
+        if [[ ! -x "${PERF_CONNECT_BENCH}" ]]; then
+            err "perf_connect_bench.sh not found or not executable: ${PERF_CONNECT_BENCH}"
+            exit 1
+        fi
+        ;;
+    *)
+        err "unsupported workload '${WORKLOAD}' (supported: open_close, connect_close)"
+        exit 1
+        ;;
+esac
 
 IFS=',' read -r -a AGENTS <<<"${AGENTS_ARG}"
 if [[ "${#AGENTS[@]}" -eq 0 ]]; then
@@ -165,13 +175,17 @@ stop_pid() {
 }
 
 run_perf_bench() {
-    # Wraps scripts/perf_open_bench.sh and returns a JSON payload.
+    # Wraps the appropriate bench script and returns a JSON payload.
     local agent_id="$1"
     local out_json="${OUT_DIR:+${OUT_DIR}/${agent_id}.json}"
-    local tmp_json
+    local tmp_json bench_script
     tmp_json="$(mktemp)"
+    case "${WORKLOAD}" in
+        open_close)    bench_script="${PERF_OPEN_BENCH}" ;;
+        connect_close) bench_script="${PERF_CONNECT_BENCH}" ;;
+    esac
     FORMAT=json OUT="${tmp_json}" ITERATIONS="${ITERATIONS}" WITH_AGENT=0 \
-        "${PERF_OPEN_BENCH}" >/dev/null
+        "${bench_script}" >/dev/null
     if [[ -n "${out_json}" ]]; then
         cp "${tmp_json}" "${out_json}"
     fi
