@@ -1,0 +1,50 @@
+{{define "nodes"}}
+{{template "layout" .}}
+{{end}}
+
+{{define "nodes_content"}}
+<div class="space-y-6 animate-fade-in">
+    <div class="flex items-center justify-between">
+        <h1 class="text-lg font-semibold text-white">Nodes &amp; Daemons</h1>
+        <span class="text-xs text-gray-500">{{len .DaemonPods}} daemon {{if eq (len .DaemonPods) 1}}pod{{else}}pods{{end}}</span>
+    </div>
+
+    <!-- Node stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <div class="text-xs text-gray-500 uppercase tracking-wider">Daemon Pods</div>
+            <div class="mt-1 text-2xl font-bold text-white">{{len .DaemonPods}}</div>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <div class="text-xs text-gray-500 uppercase tracking-wider">Running</div>
+            <div class="mt-1 text-2xl font-bold text-green-400">{{.RunningPods}}</div>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <div class="text-xs text-gray-500 uppercase tracking-wider">Total Policies</div>
+            <div class="mt-1 text-2xl font-bold text-white">{{.TotalPolicies}}</div>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <div class="text-xs text-gray-500 uppercase tracking-wider">Merged Mode</div>
+            <div class="mt-1 text-2xl font-bold {{if gt .EnforceCount 0}}text-red-400{{else}}text-blue-400{{end}}">
+                {{if gt .EnforceCount 0}}enforce{{else}}audit{{end}}
+            </div>
+        </div>
+    </div>
+
+    {{template "daemon_table" .}}
+
+    <!-- Info box -->
+    <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-4">
+        <h3 class="text-sm font-medium text-gray-400 mb-2">About Daemon Enforcement</h3>
+        <div class="text-xs text-gray-600 space-y-1">
+            <p>The AegisBPF daemon runs on each node as a DaemonSet and enforces the merged policy ConfigMap.</p>
+            <p>Enforcement requires BPF LSM support (kernel 5.7+), BTF, and ringbuf. Check daemon logs with <code class="bg-gray-800 px-1 py-0.5 rounded text-gray-400">kubectl logs -n aegisbpf-system -l app.kubernetes.io/name=aegisbpf</code></p>
+            <p>Per-node posture reporting will be available in a future release.</p>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "content"}}
+{{template "nodes_content" .}}
+{{end}}

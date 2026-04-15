@@ -1,0 +1,55 @@
+{{define "daemon_table"}}
+<div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden" id="daemon-table">
+    <div class="px-4 py-3 border-b border-gray-800">
+        <h2 class="text-sm font-medium text-gray-300">Daemon Pods</h2>
+    </div>
+    {{if .DaemonPods}}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
+                    <th class="px-4 py-2 text-left">Pod</th>
+                    <th class="px-4 py-2 text-left">Node</th>
+                    <th class="px-4 py-2 text-left">Status</th>
+                    <th class="px-4 py-2 text-left">Ready</th>
+                    <th class="px-4 py-2 text-center">Restarts</th>
+                    <th class="px-4 py-2 text-left">IP</th>
+                    <th class="px-4 py-2 text-left">Age</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800/50">
+                {{range .DaemonPods}}
+                <tr class="hover:bg-gray-800/50 transition-colors">
+                    <td class="px-4 py-2.5 font-mono text-xs text-gray-300">{{.Name}}</td>
+                    <td class="px-4 py-2.5 text-gray-400">{{.Node}}</td>
+                    <td class="px-4 py-2.5">
+                        <span class="text-xs px-1.5 py-0.5 rounded border
+                            {{if eq .Phase "Running"}}bg-green-500/20 text-green-400 border-green-500/30
+                            {{else if eq .Phase "Pending"}}bg-yellow-500/20 text-yellow-400 border-yellow-500/30
+                            {{else}}bg-red-500/20 text-red-400 border-red-500/30{{end}}">
+                            {{.Phase}}
+                        </span>
+                    </td>
+                    <td class="px-4 py-2.5">
+                        {{if .Ready}}
+                        <span class="w-2 h-2 inline-block rounded-full bg-green-500"></span>
+                        {{else}}
+                        <span class="w-2 h-2 inline-block rounded-full bg-red-500"></span>
+                        {{end}}
+                    </td>
+                    <td class="px-4 py-2.5 text-center {{if gt .Restarts 0}}text-yellow-400{{else}}text-gray-500{{end}}">{{.Restarts}}</td>
+                    <td class="px-4 py-2.5 font-mono text-xs text-gray-500">{{.IP}}</td>
+                    <td class="px-4 py-2.5 text-xs text-gray-500">{{.Age}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{else}}
+    <div class="px-4 py-12 text-center text-gray-600">
+        <p class="text-sm">No daemon pods found</p>
+        <p class="text-xs text-gray-700 mt-1">Ensure the aegisbpf DaemonSet is deployed with label app.kubernetes.io/name=aegisbpf</p>
+    </div>
+    {{end}}
+</div>
+{{end}}
