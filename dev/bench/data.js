@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776271684752,
+  "lastUpdate": 1776349497637,
   "repoUrl": "https://github.com/Kernel-Guard/Aegis-BPF",
   "entries": {
     "Benchmark": [
@@ -33408,6 +33408,102 @@ window.BENCHMARK_DATA = {
             "value": 66.32579727535595,
             "unit": "ns/iter",
             "extra": "iterations: 12\ncpu: 66.31726515788542 ns\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "erenari27@gmail.com",
+            "name": "Eren Arı",
+            "username": "ErenAri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b603211294a80643071914064538f423e95911ad",
+          "message": "Merge pull request #7 from Kernel-Guard/sync-final-updates\n\nfix: harden AWS soak script, update docs with soak status",
+          "timestamp": "2026-04-16T17:12:07+03:00",
+          "tree_id": "ab4b3595a855b778f27011d6c7419222d56bbfdb",
+          "url": "https://github.com/Kernel-Guard/Aegis-BPF/commit/b603211294a80643071914064538f423e95911ad"
+        },
+        "date": 1776349496157,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "BM_Sha256Long/64_mean",
+            "value": 1523.6956943583784,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1523.4499675681384 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/512_mean",
+            "value": 3742.478072086005,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 3742.2202643740816 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/4096_mean",
+            "value": 21778.310112780076,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 21776.21192190566 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/32768_mean",
+            "value": 165499.54014759586,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 165486.47559459347 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/262144_mean",
+            "value": 1310382.455565951,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1310158.1093701266 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/1048576_mean",
+            "value": 5238367.503745322,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 5238014.02715355 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/100_mean",
+            "value": 4788.294233301446,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 4793.03887339962 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/512_mean",
+            "value": 33008.99935610871,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 33010.05961465976 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/4096_mean",
+            "value": 269934.5896317907,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 269927.5387920092 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/10000_mean",
+            "value": 809653.6760164717,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 809769.7112011568 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseIpv6Full_mean",
+            "value": 72.70031917260143,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 72.6960863773887 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseCidrV6_mean",
+            "value": 54.77522108589767,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 54.771883436001126 ns\nthreads: 1"
           }
         ]
       }
