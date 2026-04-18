@@ -492,7 +492,7 @@ For head-to-head comparison against Falco and Tetragon, see [Comparison with Oth
 - `scripts/soak_reliability.sh` -- audit + enforce mode, file + network workload, RSS/drop/ratio gates
 - `scripts/aws_soak_24h.sh` -- automated 24-hour soak on AWS EC2 (~$0.28/day on t2.micro, self-terminating with SSH debug access)
 - `.github/workflows/soak.yml` -- weekly CI: 1-hour audit soak, 15-min enforce soak, 5-min ASAN soak
-- First 24-hour AWS soak launched 2026-04-15 on t2.micro (results pending)
+- **First 24-hour AWS soak: PASSED (2026-04-17)** -- `t2.micro`, audit mode, file + UDP workload; 88 kB RSS growth over 24 h, 0 ringbuf drops across 3.36 M decision events. Full writeup: [`docs/SOAK_24H.md`](docs/SOAK_24H.md), raw artifacts: [`evidence/soak-24h/`](evidence/soak-24h/).
 
 ### Block Commands
 
