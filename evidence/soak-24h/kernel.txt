@@ -1,0 +1,1 @@
+Linux ip-172-31-30-223 6.17.0-1010-aws #10~24.04.1-Ubuntu SMP Thu Mar 19 01:45:25 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
