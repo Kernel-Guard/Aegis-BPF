@@ -220,6 +220,21 @@ sudo scripts/compare_runtime_security.sh \
 
 Raw per-agent JSON: `evidence/comparison/`
 
+## Long-running stability (measured 2026-04-17)
+
+A 24-hour soak on a clean AWS `t2.micro` (1 vCPU, 1 GB RAM, kernel
+`6.17.0-1010-aws`, BPF LSM active) running audit mode with file + UDP
+workload passed with:
+
+- **RSS growth:** 88 kB over 24 h (threshold 131 072 kB; 0.067 % of budget)
+- **Ring-buffer drops:** 0 / 3 364 250 decision events (threshold ≤ 0.1 %)
+- **Workers:** 4 file + UDP, 5 s poll
+- **Exit:** `pass=true`, code `0`, instance self-terminated
+
+Full writeup and raw artifacts: [`docs/SOAK_24H.md`](SOAK_24H.md),
+[`evidence/soak-24h/`](../evidence/soak-24h/). Peer-tool soak runs
+(Falco, Tetragon) are not yet reproduced on the same harness.
+
 ## Architectural advantages (defensible)
 
 These statements follow from design, not from performance benchmarks
