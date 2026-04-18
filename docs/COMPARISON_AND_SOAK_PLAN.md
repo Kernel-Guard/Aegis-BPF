@@ -35,7 +35,7 @@
 5. ~~**No multi-workload benchmark**~~ — ✅ Done (open_close + connect_close + exec_loop)
 6. ~~**No automated comparison CI**~~ — ✅ Done (comparison.yml weekly Monday)
 7. **No Grafana/visualization pipeline** — soak CSV is not visualized (future)
-8. **24-hour soak launched** — first run in progress on AWS t2.micro (2026-04-15), results pending
+8. ~~**24-hour soak**~~ — ✅ First AWS run passed 2026-04-17 (t2.micro, 88 kB RSS growth, 0 ringbuf drops over 3.36 M events). See [`SOAK_24H.md`](SOAK_24H.md).
 
 ---
 
@@ -229,7 +229,7 @@ All three CI soak jobs (audit, enforce, ASAN) now include network workload.
 3. ✅ Full comparison matrix across all 3 workloads × 4 agents
 4. ✅ Results documented in `docs/PERFORMANCE_COMPARISON.md` and `evidence/comparison/`
 
-### Phase 4: Long-Duration Soak -- IN PROGRESS
+### Phase 4: Long-Duration Soak -- ✅ FIRST RUN COMPLETE
 
 **Goal:** Prove stability advantage over time.
 
@@ -240,14 +240,18 @@ Infrastructure:
 - SSH access for debugging (`aegisbpf-soak-key`), IAM role for S3 upload + self-termination
 - Security group with SSH access for log tailing
 
-First run:
-- ✅ Launched 2026-04-15 16:45 UTC on t2.micro (i-03fd7d26dc916709c)
-- ⏳ Awaiting results (expected ~2026-04-16 17:00 UTC)
-- Results will be in `s3://aegisbpf-soak-results/`
+First 24-hour AWS soak: ✅ PASSED (2026-04-17)
+- `t2.micro` (us-east-1), audit mode, file + UDP workload, 24 h
+- **RSS growth: 88 kB / 24 h** (threshold 131 072 kB; 0.067 % of budget)
+- **Ringbuf drops: 0** / 3 364 250 decision events (threshold ≤ 0.1 %)
+- Exit `0`, `pass=true`, instance self-terminated, artifacts uploaded to S3
+- Writeup: [`SOAK_24H.md`](SOAK_24H.md)
+- Raw artifacts: [`../evidence/soak-24h/`](../evidence/soak-24h/)
 
 Remaining:
-- Analyze and publish 24-hour soak results
+- 24-hour enforce-mode soak (block-path stability)
 - Multi-agent 24-hour memory curves (RSS over time for each agent)
+- Larger-instance soak (multi-vCPU lock contention)
 
 ### Phase 5: Automated Comparison CI -- ✅ COMPLETE
 
@@ -273,7 +277,7 @@ Remaining:
 | 6 | Extend CI soak to 1 hour | 15 min | Medium | ✅ Done |
 | 7 | Add network workload to soak | 1 hr | Medium | ✅ Done |
 | 8 | Add `exec_loop` workload | 2 hrs | Medium | ✅ Done |
-| 9 | Run 24-hour soak | 24 hrs (wall) | High | ⏳ Running (2026-04-15) |
+| 9 | Run 24-hour soak | 24 hrs (wall) | High | ✅ Passed (2026-04-17) |
 | 10 | Automated comparison CI | 4 hrs | Medium | ✅ Done (comparison.yml) |
 
 ---

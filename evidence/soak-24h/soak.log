@@ -1,0 +1,10 @@
+starting daemon for soak test (mode=audit duration=86400s workers=4 net=1)
+preloaded temporary soak block rule: /etc/hosts
+starting network workload workers (UDP connect to 127.0.0.1:9)
+initial RSS: 50616 kB
+max RSS: 50704 kB (growth=88 kB)
+max ringbuf drops: 0 (file=0, net=0)
+max observed decision events: 3364250
+max observed total events (decisions + drops): 3364250
+max observed drop ratio: 0.000000% (target <= 0.1%)
+soak reliability checks passed
