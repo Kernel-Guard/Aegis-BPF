@@ -91,6 +91,28 @@ grep -h '^#@mitre:' examples/policies/*.conf \
 grep -l '^#@mitre:.*T1611' examples/policies/*.conf
 ```
 
+## CI enforcement
+
+Every PR is gated by the `policy-tags` job in `.github/workflows/ci.yml`,
+which runs `scripts/validate_mitre_tags.sh`. The validator is listed in
+`config/required_checks.txt` and `config/required_checks_release.txt`,
+so new rules cannot merge without a valid tag header.
+
+Local invocation:
+
+```bash
+./scripts/validate_mitre_tags.sh
+# or against a non-default directory
+POLICY_DIR=/path/to/rules ./scripts/validate_mitre_tags.sh
+```
+
+The validator enforces: presence of the `#@aegis-tags` / `#@end-tags`
+block in the first 40 lines and before any INI section, the four
+required fields (`id`, `version`, `mitre`, `platform`), kebab-case +
+cross-file uniqueness on `id`, positive-integer `version`, MITRE
+technique / tactic grammar, and the enum values for `severity` and
+`maturity`. Unknown `#@...` fields inside the block are rejected.
+
 ## Operator requirements
 
 Any automated catalog / dashboard that consumes these tags MUST:

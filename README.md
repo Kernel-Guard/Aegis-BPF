@@ -153,7 +153,7 @@ Legend: ✅ full · ◐ partial · ❌ absent
 | Signed BPF objects | ◐ (hash verify today, sig prep) | ❌ | ❌ | ❌ | ❌ |
 | SBOM (SPDX + CycloneDX) | ✅ both | ✅ | ✅ | ✅ | ✅ |
 | SLSA L3 build provenance | ✅ v1.0 Build L3 (self-verified) | ✅ | ✅ | ✅ | ◐ |
-| MITRE ATT&CK rule tags | ◐ schema + 5 shipped rules tagged | ✅ | ◐ | ◐ | ◐ |
+| MITRE ATT&CK rule tags | ✅ schema + 5 rules tagged + CI gate | ✅ | ◐ | ◐ | ◐ |
 | CIS / NIST / PCI mappings | ✅ docs/compliance/ | ✅ | ◐ | ◐ | ✅ |
 | Prometheus metrics | ✅ | ✅ | ✅ | ✅ | ✅ |
 | OpenTelemetry OTLP | ✅ | ◐ | ✅ | ◐ | ◐ |
@@ -409,7 +409,7 @@ as `kernel-matrix-<runner>` (kernel + distro + test logs).
 | Compliance | SOC 2 Type II evidence kit | ✅ `docs/compliance/SOC2_EVIDENCE_KIT.md` |
 | Compliance | PCI DSS 4.0 | ✅ `docs/compliance/PCI_DSS_4_MAPPING.md` |
 | Compliance | CIS Kubernetes Benchmark v1.8 | ✅ `docs/compliance/CIS_KUBERNETES_BENCHMARK.md` |
-| Compliance | MITRE ATT&CK for Containers / Linux | Roadmap (rule tags) |
+| Compliance | MITRE ATT&CK for Containers / Linux | ✅ tag schema + CI gate (`docs/rules/MITRE_ATTACK_TAG_SCHEMA.md`) |
 | Event schema | OCSF 1.1 / ECS / CEF | Roadmap (custom JSON + ECS formatter today) |
 | Community | CNCF Sandbox → Incubating → Graduated | Pre-sandbox |
 
