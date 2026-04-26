@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776526270723,
+  "lastUpdate": 1777195216737,
   "repoUrl": "https://github.com/Kernel-Guard/Aegis-BPF",
   "entries": {
     "Benchmark": [
@@ -33600,6 +33600,102 @@ window.BENCHMARK_DATA = {
             "value": 54.78203208764825,
             "unit": "ns/iter",
             "extra": "iterations: 12\ncpu: 54.773401445101456 ns\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "erenari27@gmail.com",
+            "name": "Eren Arı",
+            "username": "ErenAri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a60c9e8b148a5007538fab8ac6b90fb84cf63cae",
+          "message": "Merge latest updates and CI lint fix\n\nAdmin merge requested after resolving conflicts. gitleaks is blocked by missing org GITLEAKS_LICENSE for gitleaks/gitleaks-action@v2, not by a reported secret.",
+          "timestamp": "2026-04-26T12:08:12+03:00",
+          "tree_id": "e834ff99f1a9e7004f17548fcf9d23353efb3000",
+          "url": "https://github.com/Kernel-Guard/Aegis-BPF/commit/a60c9e8b148a5007538fab8ac6b90fb84cf63cae"
+        },
+        "date": 1777195215868,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "BM_Sha256Long/64_mean",
+            "value": 1503.6578958590646,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1503.5327465582402 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/512_mean",
+            "value": 3616.2988131925763,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 3615.6723520709916 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/4096_mean",
+            "value": 20721.769183030283,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 20719.944161600237 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/32768_mean",
+            "value": 157472.94620930494,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 157460.2564961889 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/262144_mean",
+            "value": 1254502.5716950193,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1254375.4765741553 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/1048576_mean",
+            "value": 5034407.556152909,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 5033335.131421738 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/100_mean",
+            "value": 4587.581568104643,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 4593.853641510631 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/512_mean",
+            "value": 32978.72318563174,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 32984.59804477896 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/4096_mean",
+            "value": 270598.39248723356,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 270561.43086049316 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/10000_mean",
+            "value": 818523.6851088684,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 818629.2000196482 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseIpv6Full_mean",
+            "value": 72.58987210706654,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 72.58376022774225 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseCidrV6_mean",
+            "value": 55.05704965892064,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 55.04765662029144 ns\nthreads: 1"
           }
         ]
       }
