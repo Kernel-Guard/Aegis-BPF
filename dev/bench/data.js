@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779643579165,
+  "lastUpdate": 1779644314210,
   "repoUrl": "https://github.com/Kernel-Guard/Aegis-BPF",
   "entries": {
     "Benchmark": [
@@ -33894,6 +33894,102 @@ window.BENCHMARK_DATA = {
             "value": 52.956514031878164,
             "unit": "ns/iter",
             "extra": "iterations: 12\ncpu: 52.95165568190592 ns\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "erenari27@gmail.com",
+            "name": "Eren Arı",
+            "username": "ErenAri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "875fa3685db9bccc894e7abc94fac66af8067326",
+          "message": "Merge pull request #177 from ErenAri/fix/dependabot-go-deps\n\nfix(deps): patch 4 Dependabot vulnerabilities in operator Go modules",
+          "timestamp": "2026-05-24T20:26:45+03:00",
+          "tree_id": "ca8afe51e2d3270c094ec1d77fd0f5f495f238fc",
+          "url": "https://github.com/Kernel-Guard/Aegis-BPF/commit/875fa3685db9bccc894e7abc94fac66af8067326"
+        },
+        "date": 1779644312803,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "BM_Sha256Long/64_mean",
+            "value": 1562.4669591603172,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1562.2170560708676 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/512_mean",
+            "value": 3809.8717945230387,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 3809.601252586417 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/4096_mean",
+            "value": 21877.785995970407,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 21876.199855271658 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/32768_mean",
+            "value": 166159.4662872502,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 166147.3920737492 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/262144_mean",
+            "value": 1325147.8889413923,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1324917.1418557016 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/1048576_mean",
+            "value": 5299300.962752502,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 5298814.462121226 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/100_mean",
+            "value": 4664.1947382027365,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 4672.657252211059 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/512_mean",
+            "value": 33178.9735068487,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 33184.266451073505 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/4096_mean",
+            "value": 267320.9642539308,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 267285.27729493805 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/10000_mean",
+            "value": 801823.195742216,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 801928.6486927342 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseIpv6Full_mean",
+            "value": 72.08126933666277,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 72.07535676584803 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseCidrV6_mean",
+            "value": 54.04144428514596,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 54.03203833523315 ns\nthreads: 1"
           }
         ]
       }
