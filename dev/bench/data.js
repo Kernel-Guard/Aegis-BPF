@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777195216737,
+  "lastUpdate": 1779641925454,
   "repoUrl": "https://github.com/Kernel-Guard/Aegis-BPF",
   "entries": {
     "Benchmark": [
@@ -33696,6 +33696,102 @@ window.BENCHMARK_DATA = {
             "value": 55.05704965892064,
             "unit": "ns/iter",
             "extra": "iterations: 12\ncpu: 55.04765662029144 ns\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "erenari27@gmail.com",
+            "name": "Eren Arı",
+            "username": "ErenAri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "077d2705d401058d4eb3939bcbf6a6415c866f29",
+          "message": "Merge pull request #173 from ErenAri/feat/aegis-next-p3\n\nfeat: close comparison table gaps + aegis-next CI fix",
+          "timestamp": "2026-05-24T19:22:52+03:00",
+          "tree_id": "7a831e47b6114983f1a852be96e303a166744467",
+          "url": "https://github.com/Kernel-Guard/Aegis-BPF/commit/077d2705d401058d4eb3939bcbf6a6415c866f29"
+        },
+        "date": 1779641923955,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "BM_Sha256Long/64_mean",
+            "value": 1552.0201156791184,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1551.9306871281917 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/512_mean",
+            "value": 3805.169744633686,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 3804.5098807988984 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/4096_mean",
+            "value": 21885.947971650476,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 21884.287975919073 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/32768_mean",
+            "value": 166379.9685446849,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 166368.2075120715 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/262144_mean",
+            "value": 1326487.1558758726,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 1326391.7136893533 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_Sha256Long/1048576_mean",
+            "value": 5299541.460858539,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 5298650.052398976 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/100_mean",
+            "value": 4640.154517004252,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 4645.094642121699 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/512_mean",
+            "value": 32880.82056623372,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 32886.44838888024 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/4096_mean",
+            "value": 266501.1050850598,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 266469.7555576116 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_DenyEntriesInsert/10000_mean",
+            "value": 800058.0951294495,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 800201.4915813791 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseIpv6Full_mean",
+            "value": 71.12327603683359,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 71.11845732127075 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_ParseCidrV6_mean",
+            "value": 53.81871303092458,
+            "unit": "ns/iter",
+            "extra": "iterations: 12\ncpu: 53.810128165719554 ns\nthreads: 1"
           }
         ]
       }
